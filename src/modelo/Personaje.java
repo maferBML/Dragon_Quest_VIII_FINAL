@@ -130,3 +130,4 @@ public abstract class Personaje {
         this.protegido = protegido;
     }
 }
+

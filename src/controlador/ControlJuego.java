@@ -113,7 +113,9 @@ public class ControlJuego {
     }
 
     public void reiniciarPartida() {
-        crearPartidaBase();
+        heroes = new ArrayList<>();
+        enemigos = new ArrayList<>();
+        crearPartidaBase(); 
 }
 
 }

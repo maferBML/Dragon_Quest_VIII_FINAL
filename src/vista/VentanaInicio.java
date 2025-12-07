@@ -5,6 +5,8 @@ import controlador.ControlJuego;
 
 import javax.swing.*;
 import java.awt.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 public class VentanaInicio extends JFrame {
 
@@ -36,41 +38,81 @@ public class VentanaInicio extends JFrame {
         panel.setLayout(null);
         add(panel);
 
-        // ================= TÍTULO CLÁSICO =================
+        // ================= TÍTULO =================
         JLabel titulo = new JLabel("DRAGON QUEST VIII", JLabel.CENTER);
         titulo.setFont(new Font("Serif", Font.BOLD, 60));
         titulo.setForeground(Color.WHITE);
         titulo.setBounds(0, 80, getWidth(), 50);
         panel.add(titulo);
 
-        // SUBTÍTULO (opcional)
         JLabel subtitulo = new JLabel("El Reino de Trodain", JLabel.CENTER);
         subtitulo.setFont(new Font("Serif", Font.BOLD, 28));
         subtitulo.setForeground(Color.WHITE);
         subtitulo.setBounds(0, 140, getWidth(), 40);
         panel.add(subtitulo);
 
-        // ================= BOTONES RPG =================
-        JLabel btnStart = crearBotonMenu("▶️  Empezar aventura");
+        // ================= BOTONES =================
+
+        JLabel btnStart = crearBotonMenu("▶  Empezar aventura");
         btnStart.setBounds(50, 250, 400, 60);
         panel.add(btnStart);
 
+        // NUEVO BOTÓN: HISTORIAL
+        JLabel btnHistorial = crearBotonMenu("📜  Historial de batallas");
+        btnHistorial.setBounds(50, 330, 400, 60);
+        panel.add(btnHistorial);
+
         JLabel btnSalir = crearBotonMenu("✖  Salir");
-        btnSalir.setBounds(50, 330, 400, 60);
+        btnSalir.setBounds(50, 410, 400, 60);
         panel.add(btnSalir);
 
-        // Acción iniciar
+        // ====== ACCIONES ======
+
+        // Iniciar partida
         btnStart.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
                 musica.parar();
-                control.reiniciarPartida();                      // 💥 PARAR MÚSICA DEL MENÚ
-                new VentanaBatalla(control);          // abrir batalla
+                control.reiniciarPartida();
+                new VentanaBatalla(control);
                 dispose();
             }
         });
 
-        // Acción salir
+        // Historial de Batallas
+        btnHistorial.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+
+                try {
+                    String texto = Files.readString(Path.of("historial_batallas.txt"));
+
+                    JTextArea area = new JTextArea(25, 45);
+                    area.setEditable(false);
+                    area.setFont(new Font("Monospaced", Font.PLAIN, 14));
+                    area.setText(texto);
+
+                    JScrollPane scroll = new JScrollPane(area);
+
+                    JOptionPane.showMessageDialog(
+                            VentanaInicio.this,
+                            scroll,
+                            "📜 Historial de Batallas",
+                            JOptionPane.INFORMATION_MESSAGE
+                    );
+
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(
+                            VentanaInicio.this,
+                            "Aún no hay historial disponible.",
+                            "Historial",
+                            JOptionPane.WARNING_MESSAGE
+                    );
+                }
+            }
+        });
+
+        // Salir
         btnSalir.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
@@ -78,13 +120,13 @@ public class VentanaInicio extends JFrame {
             }
         });
 
-        // Animación hover (solo deslizar)
+        // Animaciones hover
         animacionHoverDeslizar(btnStart);
+        animacionHoverDeslizar(btnHistorial);
         animacionHoverDeslizar(btnSalir);
 
         setVisible(true);
 
-        // 💥 ESTA ES LA ÚNICA PARTE DONDE DEBE IR LA MÚSICA DEL MENÚ
         musica.reproducirLoop("/sonidos/intro.wav");
     }
 
@@ -94,6 +136,7 @@ public class VentanaInicio extends JFrame {
         lbl.setFont(new Font("Serif", Font.BOLD, 32));
         lbl.setForeground(Color.WHITE);
         lbl.setOpaque(false);
+        lbl.setCursor(new Cursor(Cursor.HAND_CURSOR));
         return lbl;
     }
 
