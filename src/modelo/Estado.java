@@ -14,19 +14,26 @@ public class Estado {
     public boolean terminado() { return duracion <= 0; }
 
     public void aplicarEfecto(Personaje p) {
-        if (nombre.equals("Envenenado")) {
-            System.out.println(p.getNombre() + " sufre daño por veneno.");
-            p.setVidaHp(p.getVidaHp() - 10);
+        // ----- NUEVA LÓGICA: VENENO -----
+        if (nombre.equalsIgnoreCase("Envenenado")) {
+
+            // daño variable entre 5 y 12 por turno
+            int danio = 5 + new java.util.Random().nextInt(8);
+
+            p.setVidaHp(p.getVidaHp() - danio);
+
+            System.out.println(p.getNombre() +
+                    " sufre " + danio + " de daño por VENENO.");
+
             if (p.getVidaHp() <= 0) {
                 p.setVidaHp(0);
                 p.setVive(false);
-                System.out.println(p.getNombre() + " ha muerto por veneno.");
+                System.out.println(p.getNombre() + " murió por el veneno.");
             }
+
             reducirDuracion();
+            return;
         }
 
-        else if (nombre.equals("Sueño")) {
-            reducirDuracion(); 
-        }
     }
 }

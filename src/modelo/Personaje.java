@@ -8,6 +8,8 @@ public abstract class Personaje {
     private int velocidad;
     private boolean vive;
     private Estado estado;
+    private boolean protegido;
+
 
     public Personaje(String nombre, int vidaHp, int magiaMp, int ataque, int defensa, int velocidad) {
         this.nombre = nombre;
@@ -18,6 +20,8 @@ public abstract class Personaje {
         this.velocidad = velocidad;
         this.vive = true;
         this.estado = null;
+        this.protegido = false;
+
     }
 
     public abstract void atacar(Personaje enemigo);
@@ -116,5 +120,13 @@ public abstract class Personaje {
 
     public void setEstado(Estado estado) {
         this.estado = estado;
+    }
+
+    public boolean isProtegido() {
+        return protegido;
+    }
+
+    public void setProtegido(boolean protegido) {
+        this.protegido = protegido;
     }
 }

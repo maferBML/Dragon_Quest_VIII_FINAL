@@ -34,7 +34,7 @@ public class ControlJuego {
         // Habilidades de Jessica
         heroe3.agregarHabilidad(new Habilidad("Fuego", "daño", 25, 10));
         heroe3.agregarHabilidad(new Habilidad("Curar", "curación", 30, 8));
-        heroe3.agregarHabilidad(new Habilidad("Veneno", "estado", 0, 6, 2, "Envenenado"));
+        heroe3.agregarHabilidad(new Habilidad("Veneno", "estado", 0, 6, 5, "Envenenado"));
 
         // Habilidades de Angelo
         heroe4.agregarHabilidad(new Habilidad("Rayo Divino", "daño", 35, 12));

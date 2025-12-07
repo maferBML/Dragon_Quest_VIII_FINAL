@@ -51,7 +51,7 @@ public class VentanaInicio extends JFrame {
         panel.add(subtitulo);
 
         // ================= BOTONES RPG =================
-        JLabel btnStart = crearBotonMenu("▶  Empezar aventura");
+        JLabel btnStart = crearBotonMenu("▶️  Empezar aventura");
         btnStart.setBounds(50, 250, 400, 60);
         panel.add(btnStart);
 
