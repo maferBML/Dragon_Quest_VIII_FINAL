@@ -35,6 +35,11 @@ public class Enemigo extends Personaje {
         int danioBase = this.getAtaque() - enemigo.getDefensa();
         if (danioBase < 0) danioBase = 0;
 
+        if (enemigo.isProtegido()) {
+            danioBase = (int) (danioBase * 0.30);
+            System.out.println(enemigo.getNombre() + " reduce el daño gracias a su postura defensiva.");
+        }
+
         if (miniJefe && random.nextInt(100) < 40) {
             critico = true;
             danioBase *= 2;
@@ -121,6 +126,13 @@ public class Enemigo extends Personaje {
         boolean critico = false;
         int danioBase = this.getAtaque() - enemigo.getDefensa();
         if (danioBase < 0) danioBase = 0;
+
+        if (enemigo.isProtegido()) {
+            danioBase = (int) (danioBase * 0.30);
+            sb.append(enemigo.getNombre())
+            .append(" reduce el daño gracias a su postura defensiva.\n");
+        }
+
 
         if (miniJefe && random.nextInt(100) < 40) {
             critico = true;
