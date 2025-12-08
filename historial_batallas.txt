@@ -117,3 +117,37 @@ ENEMIGOS:
 - Esqueleto | HP: 27 | Estado: Vivo
 ==============================================
 
+==============================================
+FECHA: 2025-12-08T16:05:03.209869700
+RESULTADO: Victoria del jugador
+
+HÉROES:
+- Héroe | HP: 32 | Estado: Vivo
+- Yangus | HP: 48 | Estado: Vivo
+- Jessica | HP: 0 | Estado: Muerto
+- Angelo | HP: 0 | Estado: Muerto
+
+ENEMIGOS:
+- Goblin | HP: 0 | Estado: Muerto
+- Slime | HP: 0 | Estado: Muerto
+- Dragón | HP: 0 | Estado: Muerto
+- Esqueleto | HP: 0 | Estado: Muerto
+==============================================
+
+==============================================
+FECHA: 2025-12-08T16:23:26.887841600
+RESULTADO: Derrota del jugador
+
+HÉROES:
+- Héroe | HP: 0 | Estado: Muerto
+- Yangus | HP: 0 | Estado: Muerto
+- Jessica | HP: 0 | Estado: Muerto
+- Angelo | HP: 0 | Estado: Muerto
+
+ENEMIGOS:
+- Goblin | HP: 0 | Estado: Muerto
+- Slime | HP: 0 | Estado: Muerto
+- Dragón | HP: 7 | Estado: Vivo
+- Esqueleto | HP: 0 | Estado: Muerto
+==============================================
+
