@@ -1,6 +1,7 @@
 package modelo;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Scanner;
 import java.util.Random;
@@ -11,6 +12,8 @@ import modelo.excepciones.HabilidadSinMPException;
 import modelo.excepciones.AccionNoPermitidaException;
 
 public class Heroe extends Personaje {
+
+    private HashMap<String, Integer> inventario = new HashMap<>();
 
     private ArrayList<Habilidad> habilidades = new ArrayList<>();
 
@@ -318,4 +321,82 @@ public class Heroe extends Personaje {
 
         return sb.toString();
     }
+    public HashMap<String, Integer> getInventario() {
+        return inventario;
+    }
+
+    public void agregarItem(String nombreItem) {
+        if (inventario.size() < 5 || inventario.containsKey(nombreItem)) {
+            inventario.put(nombreItem, inventario.getOrDefault(nombreItem, 0) + 1);
+        } else {
+            System.out.println("Inventario lleno (máximo 5 objetos).");
+        }
+    }
+
+public String usarItem(String nombreItem, Heroe objetivo, ArrayList<Heroe> todosLosHeroes) {
+
+    if (!inventario.containsKey(nombreItem)) {
+        return "No tienes ese objeto.";
+    }
+
+    // Reducir cantidad
+    int cant = inventario.get(nombreItem);
+    if (cant <= 1) inventario.remove(nombreItem);
+    else inventario.put(nombreItem, cant - 1);
+
+    Random r = new Random();
+
+    switch (nombreItem.toLowerCase()) {
+
+        // =================== ÍTEMS COMUNES ===================
+
+        // 1. Hierba Sanadora → cura por 5 turnos, 5–12 HP por turno
+        case "hierba sanadora":
+            objetivo.setEstado(new Estado("CuracionRegenerativa", 5));
+            return objetivo.getNombre() + " recibirá curación continua por 5 turnos.";
+
+        // 2. Despertar a un compañero
+        case "campanilla despertar":
+            if (objetivo.getEstado() != null && objetivo.getEstado().getNombre().equalsIgnoreCase("Sueño")) {
+                objetivo.setEstado(null);
+                return objetivo.getNombre() + " ha despertado.";
+            }
+            return objetivo.getNombre() + " no estaba dormido.";
+
+        // 3. Cura simple de 10 HP
+        case "hierba pequeña":
+            objetivo.setVidaHp(objetivo.getVidaHp() + 10);
+            return objetivo.getNombre() + " recupera 10 HP.";
+
+        // 4. Buff defensivo
+        case "poción de defensa":
+            objetivo.setDefensa(objetivo.getDefensa() + 3);
+            return objetivo.getNombre() + " aumenta su defensa en +3 por un turno.";
+
+        // =================== ÍTEMS ESPECIALES ===================
+        // NO deben pedir objetivo, así que ignoramos 'objetivo'
+
+        case "talismán del valor":
+            this.setAtaque(this.getAtaque() + 3);
+            return "El ataque de " + this.getNombre() + " aumenta permanentemente en +3.";
+
+        case "hacha oxidada gigante":
+            this.setAtaque(this.getAtaque() * 2);
+            return this.getNombre() + " duplicará su próximo ataque.";
+
+        case "amuleto de maná arcano":
+            this.setMagiaMp(this.getMagiaMp() + 20);
+            return this.getNombre() + " recupera 20 MP.";
+
+        case "bendición divina":
+            for (Heroe h : todosLosHeroes) {
+                if (h.estaVivo()) h.setVidaHp(h.getVidaHp() + 25);
+            }
+            return "Todos los aliados recuperan 25 HP.";
+
+        default:
+            return "Este objeto no tiene efecto programado.";
+    }
 }
+
+    }
