@@ -6,10 +6,13 @@ import modelo.Enemigo;
 import modelo.Habilidad;
 import modelo.Heroe;
 import modelo.Personaje;
+
 import modelo.excepciones.DefenderException;
 import modelo.excepciones.HabilidadSinMPException;
 import modelo.excepciones.ObjetivoInvalidoException;
 import modelo.excepciones.AccionNoPermitidaException;
+
+import modelo.HistorialBatallas;
 
 import javax.swing.*;
 import java.awt.*;
@@ -19,6 +22,9 @@ import java.util.List;
 import java.util.Random;
 
 public class VentanaBatalla extends JFrame {
+
+    private boolean batallaFinalizada = false;
+
 
     private enum ModoAccion { NINGUNO, ATACAR, HABILIDAD_ENEMIGO }
 
@@ -620,14 +626,12 @@ public class VentanaBatalla extends JFrame {
 
         if (!hayVivos(enemigos)) {
             cuadroTexto.append("\n🏆 ¡HAS GANADO LA BATALLA!\n");
-            deshabilitarTodo();
-            actualizarHeroes();
-            cuadroTexto.setCaretPosition(cuadroTexto.getText().length());
             musicaBatalla.parar();
-            new VentanaVictoria();
-            dispose();
+            finalizarBatalla("Victoria del jugador");
             return;
         }
+
+
 
         finTurnoJugador();
         turnoEnemigo();
@@ -768,14 +772,12 @@ public class VentanaBatalla extends JFrame {
 
         if (!hayVivos(enemigos)) {
             cuadroTexto.append("\n🏆 ¡HAS GANADO LA BATALLA!\n");
-            deshabilitarTodo();
-            actualizarHeroes();
-            cuadroTexto.setCaretPosition(cuadroTexto.getText().length());
             musicaBatalla.parar();
-            new VentanaVictoria();
-            dispose();
+            finalizarBatalla("Victoria del jugador (habilidad)");
             return;
         }
+
+
 
         actualizarHeroes();
         finTurnoJugador();
@@ -783,23 +785,27 @@ public class VentanaBatalla extends JFrame {
     }
 
         private void turnoEnemigo() {
-        if (!hayVivos(enemigos) || !hayVivos(heroes)) return;
+        if (!hayVivos(heroes)) {
+            cuadroTexto.append("\n💀 ¡TU EQUIPO HA SIDO DERROTADO!\n");
+            musicaBatalla.parar();
+            finalizarBatalla("Derrota del jugador");
+            return;
+        }
+
+
 
         Enemigo enemigoAtaca = elegirEnemigoVivoAleatorio();
         if (enemigoAtaca == null) return;
 
+        
         // Primero aplicar veneno al enemigo antes de que actúe
         if (!procesarVeneno(enemigoAtaca)) {
             actualizarEnemigos();
 
             if (!hayVivos(enemigos)) {
                 cuadroTexto.append("\n🏆 ¡HAS GANADO LA BATALLA!\n");
-                deshabilitarTodo();
-                actualizarHeroes();
-                cuadroTexto.setCaretPosition(cuadroTexto.getText().length());
                 musicaBatalla.parar();
-                new VentanaVictoria();
-                dispose();
+                finalizarBatalla("Victoria del jugador (veneno)");
             } else {
                 // Murió este enemigo pero quedan otros; vuelve el turno al jugador
                 mostrarMenuAcciones(true);
@@ -808,6 +814,7 @@ public class VentanaBatalla extends JFrame {
             }
             return;
         }
+
 
         Heroe heroeObjetivo = elegirHeroeVivoAleatorio();
         if (heroeObjetivo == null) return;
@@ -823,12 +830,11 @@ public class VentanaBatalla extends JFrame {
 
         if (!hayVivos(heroes)) {
             cuadroTexto.append("\n💀 ¡TU EQUIPO HA SIDO DERROTADO!\n");
-            deshabilitarTodo();
             musicaBatalla.parar();
-            new VentanaDerrota();
-            dispose();
+            finalizarBatalla("Derrota del jugador");
             return;
         }
+
 
         actualizarHeroes();
         actualizarEnemigos();
@@ -911,4 +917,33 @@ public class VentanaBatalla extends JFrame {
         cuadroTexto.setCaretPosition(cuadroTexto.getText().length());
     }
 
+private void finalizarBatalla(String resultado) {
+
+    if (batallaFinalizada) return; // ⛔ Ya se ejecutó antes
+    batallaFinalizada = true;     // 🔒 Bloquear siguientes llamadas
+
+    try {
+        HistorialBatallas.registrar(resultado, control.getHeroes(), control.getEnemigos());
+
+        if (resultado.toLowerCase().contains("derrota")) {
+            new VentanaDerrota();
+        } else {
+            new VentanaVictoria();
+        }
+
+        control.reiniciarPartida();
+        dispose();
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        JOptionPane.showMessageDialog(this,
+                "Error al finalizar batalla:\n" + e.getMessage(),
+                "Error",
+                JOptionPane.ERROR_MESSAGE);
+    }
 }
+
+}
+
+
+

@@ -161,10 +161,14 @@ public class Combate {
             turno++;
         }
 
-        if (hayVivos(heroes))
+        if (hayVivos(heroes)) {
             System.out.println("¡GANASTE MASTER!");
-        else
+            HistorialBatallas.registrar("Victoria del jugador", heroes, enemigos);
+        } else {
             System.out.println("¡Sos un malo!");
+            HistorialBatallas.registrar("Derrota del jugador", heroes, enemigos);
+        }
+
     }
 
     private boolean hayVivos(List<? extends Personaje> lista) {
@@ -252,3 +256,4 @@ public class Combate {
         return resultado.toString();
     }
 }
+
