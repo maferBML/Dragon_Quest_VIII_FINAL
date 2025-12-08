@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.ArrayDeque;
 
 
@@ -33,6 +34,8 @@ public class VentanaBatalla extends JFrame {
     private enum ModoAccion { NINGUNO, ATACAR, HABILIDAD_ENEMIGO }
 
     private ControlJuego control;
+
+    private JButton btnObjetos;
 
     private Image fondo;
     private JTextArea cuadroTexto;
@@ -174,7 +177,10 @@ public class VentanaBatalla extends JFrame {
         btnDeshacer = crearBoton("Deshacer");
         btnRehacer  = crearBoton("Rehacer");
         btnSalir    = crearBoton("Salir");
+        btnObjetos = crearBoton("Objetos");
+        panelMenuAcciones.add(btnObjetos);
 
+        btnObjetos.addActionListener(e -> abrirInventario());
 
         btnAtacar.addActionListener(e -> {
             Heroe h = obtenerHeroeActual();
@@ -606,6 +612,40 @@ public class VentanaBatalla extends JFrame {
             return p.estaVivo();
         }
 
+    /**
+ * Aplica la curación regenerativa a un personaje.
+ * Devuelve true si sigue vivo (siempre debería ser true porque cura),
+ * y false si hubiera algún problema (nunca pasa).
+ */
+    private boolean procesarCuracion(Personaje p) {
+        if (p == null) return true;
+        if (p.getEstado() == null) return true;
+
+        if (!p.getEstado().getNombre().equalsIgnoreCase("CuracionRegenerativa")) {
+            return true; // Otro estado, no este
+        }
+
+        // Curación entre 5 y 12
+        int cura = 5 + random.nextInt(8);
+        p.setVidaHp(p.getVidaHp() + cura);
+
+        cuadroTexto.append("✨ " + p.getNombre()
+                + " recupera " + cura + " puntos de vida por curación regenerativa.\n");
+
+        // Reducir duración
+        p.getEstado().reducirDuracion();
+
+        // Si se acabó
+        if (p.getEstado().terminado()) {
+            cuadroTexto.append("💫 La curación regenerativa terminó para "
+                    + p.getNombre() + ".\n");
+            p.setEstado(null);
+        }
+
+        return true;
+    }
+
+
 
     private void deshabilitarTodo() {
         for (JPanel p : panelesEnemigos) {
@@ -914,6 +954,9 @@ public class VentanaBatalla extends JFrame {
             }
             return false; // este héroe ya no puede actuar
         }
+        // Curación regenerativa si aplica
+        procesarCuracion(h);
+
 
         // 2) Si ya no tiene estado, puede actuar normal
         if (h.getEstado() == null) return true;
@@ -1146,8 +1189,70 @@ private void finalizarBatalla(String resultado) {
                 JOptionPane.ERROR_MESSAGE);
     }
 }
+    private void abrirInventario() {
+        Heroe h = obtenerHeroeActual();
+        HashMap<String, Integer> inv = h.getInventario();
+
+        if (inv.isEmpty()) {
+            cuadroTexto.append("\nNo tienes objetos.\n");
+            return;
+        }
+
+        Object[] opciones = inv.keySet().toArray();
+
+        String elegido = (String) JOptionPane.showInputDialog(
+                this,
+                "Elige un objeto:",
+                "Inventario",
+                JOptionPane.PLAIN_MESSAGE,
+                null,
+                opciones,
+                opciones[0]
+        );
+
+        if (elegido == null) return;
+
+        // Elegir objetivo
+        ArrayList<Heroe> vivos = new ArrayList<>();
+        for (Heroe ally : heroes) if (ally.estaVivo()) vivos.add(ally);
+
+        Heroe objetivo = vivos.get(0);
+        boolean esEspecial = elegido.equalsIgnoreCase("talismán del valor")
+            || elegido.equalsIgnoreCase("hacha oxidada gigante")
+            || elegido.equalsIgnoreCase("amuleto de maná arcano")
+            || elegido.equalsIgnoreCase("bendición divina");
+
+        if (!esEspecial) {
+
+
+            String[] nombres = vivos.stream()
+                    .map(a -> a.getNombre() + " (HP: " + a.getVidaHp() + ")")
+                    .toArray(String[]::new);
+
+            String sel = (String) JOptionPane.showInputDialog(
+                    this,
+                    "¿A quién lo aplicas?",
+                    "Objetivo",
+                    JOptionPane.PLAIN_MESSAGE,
+                    null,
+                    nombres,
+                    nombres[0]
+            );
+
+            for (int i = 0; i < nombres.length; i++) {
+                if (nombres[i].equals(sel)) {
+                    objetivo = vivos.get(i);
+                }
+            }
+        }
+
+        String resultado = h.usarItem(elegido, objetivo, heroes);
+        cuadroTexto.append("\n" + resultado + "\n");
+
+        actualizarHeroes();
+        finTurnoJugador();
+        turnoEnemigo();
+    }
+
 
 }
-
-
-

@@ -17,6 +17,7 @@ public class ControlJuego {
 
     private ArrayList<Heroe> heroes;
     private ArrayList<Enemigo> enemigos;
+    
 
     public ControlJuego() {
         // no hace nada por ahora
@@ -39,6 +40,36 @@ public class ControlJuego {
         // Habilidades de Angelo
         heroe4.agregarHabilidad(new Habilidad("Rayo Divino", "daño", 35, 12));
         heroe4.agregarHabilidad(new Habilidad("Curación Menor", "curación", 20, 6));
+        /// Items
+        
+        // Ítems comunes
+        // ÍTEMS COMUNES
+        heroe1.agregarItem("Hierba Sanadora");
+        heroe1.agregarItem("Campanilla Despertar");
+        heroe1.agregarItem("Hierba Pequeña");
+        heroe1.agregarItem("Poción de Defensa");
+
+        heroe2.agregarItem("Hierba Sanadora");
+        heroe2.agregarItem("Campanilla Despertar");
+        heroe2.agregarItem("Hierba Pequeña");
+        heroe2.agregarItem("Poción de Defensa");
+
+        heroe3.agregarItem("Hierba Sanadora");
+        heroe3.agregarItem("Campanilla Despertar");
+        heroe3.agregarItem("Hierba Pequeña");
+        heroe3.agregarItem("Poción de Defensa");
+
+        heroe4.agregarItem("Hierba Sanadora");
+        heroe4.agregarItem("Campanilla Despertar");
+        heroe4.agregarItem("Hierba Pequeña");
+        heroe4.agregarItem("Poción de Defensa");
+
+
+        heroe1.agregarItem("Talismán del valor");
+        heroe2.agregarItem("Hacha oxidada gigante");
+        heroe3.agregarItem("Amuleto de maná arcano");
+        heroe4.agregarItem("Bendición divina");
+
 
         heroes = new ArrayList<>();
         heroes.add(heroe1);
