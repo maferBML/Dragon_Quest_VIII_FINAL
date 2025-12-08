@@ -3,6 +3,7 @@ package vista;
 import modelo.Musica;
 import controlador.ControlJuego;
 import modelo.Enemigo;
+import modelo.Estado;
 import modelo.Habilidad;
 import modelo.Heroe;
 import modelo.Personaje;
@@ -20,6 +21,9 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.Deque;
+import java.util.ArrayDeque;
+
 
 public class VentanaBatalla extends JFrame {
 
@@ -60,6 +64,32 @@ public class VentanaBatalla extends JFrame {
 
     private Musica musicaBatalla = new Musica();
 
+        // ======== DESHACER / REHACER ========
+
+    // Datos básicos de cada personaje para poder restaurar el estado
+    private static class DatosPersonaje {
+        int vida, mp, ataque, defensa, velocidad;
+        boolean vive, protegido;
+        String estadoNombre;
+        int estadoDuracion;
+    }
+
+    // Estado completo de la batalla: héroes + enemigos + índice del héroe actual
+    private static class EstadoBatalla {
+        DatosPersonaje[] heroes;
+        DatosPersonaje[] enemigos;
+        int indiceHeroeActual;
+    }
+
+    // Pilas para deshacer/rehacer (máximo 3 estados atrás)
+    private Deque<EstadoBatalla> pilaUndo = new ArrayDeque<>();
+    private Deque<EstadoBatalla> pilaRedo = new ArrayDeque<>();
+
+    // Botones extra del menú
+    private JButton btnDeshacer;
+    private JButton btnRehacer;
+
+
     public VentanaBatalla(ControlJuego control) {
         this.control = control;
         this.heroes = control.getHeroes();
@@ -82,7 +112,8 @@ public class VentanaBatalla extends JFrame {
             cuadroTexto.append("\nTurno inicial de: " + actual.getNombre() + "\n");
             resaltarHeroe(actual);
         }
-
+                // Guardamos el estado inicial por si el jugador quiere deshacer
+        guardarEstadoActual();
         setVisible(true);
     }
 
@@ -134,13 +165,16 @@ public class VentanaBatalla extends JFrame {
         panelMenuAcciones = new JPanel();
         panelMenuAcciones.setBackground(new Color(10, 10, 30));
         panelMenuAcciones.setBorder(BorderFactory.createLineBorder(Color.WHITE, 2));
-        panelMenuAcciones.setLayout(new GridLayout(4, 1, 5, 5));
+        panelMenuAcciones.setLayout(new GridLayout(6, 1, 5, 5));
         panelMenuAcciones.setPreferredSize(new Dimension(230, 0));
 
-        btnAtacar = crearBoton("Atacar");
+        btnAtacar   = crearBoton("Atacar");
         btnDefender = crearBoton("Defender");
         btnHabilidad = crearBoton("Habilidad");
-        btnSalir = crearBoton("Salir");
+        btnDeshacer = crearBoton("Deshacer");
+        btnRehacer  = crearBoton("Rehacer");
+        btnSalir    = crearBoton("Salir");
+
 
         btnAtacar.addActionListener(e -> {
             Heroe h = obtenerHeroeActual();
@@ -202,13 +236,17 @@ public class VentanaBatalla extends JFrame {
             manejarHabilidad();
         });
 
-
+        btnDeshacer.addActionListener(e -> deshacerRonda());
+        btnRehacer.addActionListener(e -> rehacerRonda());
         btnSalir.addActionListener(e -> System.exit(0));
 
         panelMenuAcciones.add(btnAtacar);
         panelMenuAcciones.add(btnDefender);
         panelMenuAcciones.add(btnHabilidad);
+        panelMenuAcciones.add(btnDeshacer);
+        panelMenuAcciones.add(btnRehacer);
         panelMenuAcciones.add(btnSalir);
+
 
         panelInferior = new JPanel(new BorderLayout());
         panelInferior.setBackground(new Color(10, 10, 30));
@@ -840,6 +878,9 @@ public class VentanaBatalla extends JFrame {
         actualizarEnemigos();
 
         if (hayVivos(heroes) && hayVivos(enemigos)) {
+            // 🔹 Nueva ronda: guardamos el estado para poder deshacer
+            guardarEstadoActual();
+
             mostrarMenuAcciones(true);
             Heroe siguiente = obtenerHeroeActual();
             if (siguiente != null) resaltarHeroe(siguiente);
@@ -847,6 +888,7 @@ public class VentanaBatalla extends JFrame {
 
         cuadroTexto.setCaretPosition(cuadroTexto.getText().length());
     }
+
 
     /**
  * Procesa efectos de estado para el héroe actual.
@@ -916,6 +958,168 @@ public class VentanaBatalla extends JFrame {
 
         cuadroTexto.setCaretPosition(cuadroTexto.getText().length());
     }
+
+    // ======== MANEJO DE ESTADOS (SNAPSHOTS) ========
+
+    // Toma un snapshot del estado actual de la batalla
+    private EstadoBatalla tomarEstado() {
+        EstadoBatalla est = new EstadoBatalla();
+
+        est.heroes = new DatosPersonaje[heroes.size()];
+        for (int i = 0; i < heroes.size(); i++) {
+            Heroe h = heroes.get(i);
+            DatosPersonaje d = new DatosPersonaje();
+            d.vida     = h.getVidaHp();
+            d.mp       = h.getMagiaMp();
+            d.ataque   = h.getAtaque();
+            d.defensa  = h.getDefensa();
+            d.velocidad = h.getVelocidad();
+            d.vive     = h.estaVivo();
+            d.protegido = h.isProtegido();
+
+            if (h.getEstado() != null) {
+                d.estadoNombre   = h.getEstado().getNombre();
+                d.estadoDuracion = h.getEstado().getDuracion();
+            } else {
+                d.estadoNombre   = null;
+                d.estadoDuracion = 0;
+            }
+            est.heroes[i] = d;
+        }
+
+        est.enemigos = new DatosPersonaje[enemigos.size()];
+        for (int i = 0; i < enemigos.size(); i++) {
+            Enemigo e = enemigos.get(i);
+            DatosPersonaje d = new DatosPersonaje();
+            d.vida     = e.getVidaHp();
+            d.mp       = e.getMagiaMp();
+            d.ataque   = e.getAtaque();
+            d.defensa  = e.getDefensa();
+            d.velocidad = e.getVelocidad();
+            d.vive     = e.estaVivo();
+            d.protegido = e.isProtegido();
+
+            if (e.getEstado() != null) {
+                d.estadoNombre   = e.getEstado().getNombre();
+                d.estadoDuracion = e.getEstado().getDuracion();
+            } else {
+                d.estadoNombre   = null;
+                d.estadoDuracion = 0;
+            }
+            est.enemigos[i] = d;
+        }
+
+        est.indiceHeroeActual = this.indiceHeroeActual;
+
+        return est;
+    }
+
+    // Aplica un snapshot sobre el estado actual
+    private void aplicarEstado(EstadoBatalla est) {
+        // Restaurar héroes
+        for (int i = 0; i < heroes.size() && i < est.heroes.length; i++) {
+            Heroe h = heroes.get(i);
+            DatosPersonaje d = est.heroes[i];
+
+            h.setVidaHp(d.vida);
+            h.setMagiaMp(d.mp);
+            h.setAtaque(d.ataque);
+            h.setDefensa(d.defensa);
+            h.setVelocidad(d.velocidad);
+            h.setVive(d.vive);
+            h.setProtegido(d.protegido);
+
+            if (d.estadoNombre != null) {
+                h.setEstado(new Estado(d.estadoNombre, d.estadoDuracion));
+            } else {
+                h.setEstado(null);
+            }
+        }
+
+        // Restaurar enemigos
+        for (int i = 0; i < enemigos.size() && i < est.enemigos.length; i++) {
+            Enemigo e = enemigos.get(i);
+            DatosPersonaje d = est.enemigos[i];
+
+            e.setVidaHp(d.vida);
+            e.setMagiaMp(d.mp);
+            e.setAtaque(d.ataque);
+            e.setDefensa(d.defensa);
+            e.setVelocidad(d.velocidad);
+            e.setVive(d.vive);
+            e.setProtegido(d.protegido);
+
+            if (d.estadoNombre != null) {
+                e.setEstado(new Estado(d.estadoNombre, d.estadoDuracion));
+            } else {
+                e.setEstado(null);
+            }
+        }
+
+        this.indiceHeroeActual = est.indiceHeroeActual;
+
+        actualizarHeroes();
+        actualizarEnemigos();
+
+        Heroe actual = obtenerHeroeActual();
+        if (actual != null) resaltarHeroe(actual);
+
+        cuadroTexto.append("\n⏮ Se ha restaurado una ronda.\n");
+        cuadroTexto.setCaretPosition(cuadroTexto.getText().length());
+    }
+
+    // Guarda el estado actual en la pila de undo
+    private void guardarEstadoActual() {
+        EstadoBatalla est = tomarEstado();
+        pilaUndo.addFirst(est);
+
+        // Máximo 3 estados hacia atrás
+        if (pilaUndo.size() > 2) {
+            pilaUndo.removeLast();
+        }
+
+        // Al hacer una acción nueva, se borra el posible rehacer
+        pilaRedo.clear();
+    }
+
+    // === Botón DESHACER ===
+    private void deshacerRonda() {
+        if (pilaUndo.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No hay más rondas para deshacer.",
+                    "Deshacer",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        // Guardar el estado actual en redo
+        EstadoBatalla estadoActual = tomarEstado();
+        pilaRedo.addFirst(estadoActual);
+
+        // Recuperar el último de undo
+        EstadoBatalla est = pilaUndo.removeFirst();
+        aplicarEstado(est);
+    }
+
+    // === Botón REHACER ===
+    private void rehacerRonda() {
+        if (pilaRedo.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No hay acciones para rehacer.",
+                    "Rehacer",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        // Guardar el estado actual nuevamente en undo
+        EstadoBatalla estadoActual = tomarEstado();
+        pilaUndo.addFirst(estadoActual);
+
+        // Recuperar el primero de redo
+        EstadoBatalla est = pilaRedo.removeFirst();
+        aplicarEstado(est);
+    }
+
 
 private void finalizarBatalla(String resultado) {
 
