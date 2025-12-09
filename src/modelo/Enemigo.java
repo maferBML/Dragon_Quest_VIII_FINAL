@@ -11,6 +11,7 @@ public class Enemigo extends Personaje {
     public Enemigo(String nombre, int vidaHp, int magiaMp, int ataque, int defensa, int velocidad, String tipo) {
         super(nombre, vidaHp, magiaMp, ataque, defensa, velocidad);
         this.tipo = tipo;
+        
     }
 
     public Enemigo(String nombre, int vidaHp, int magiaMp, int ataque, int defensa, int velocidad, String tipo, boolean miniJefe) {

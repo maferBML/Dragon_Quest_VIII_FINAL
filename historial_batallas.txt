@@ -185,3 +185,20 @@ ENEMIGOS:
 - Esqueleto | HP: 12 | Estado: Vivo
 ==============================================
 
+==============================================
+FECHA: 2025-12-09T12:47:32.451852500
+RESULTADO: Victoria del jugador
+
+HÉROES:
+- Héroe | HP: 85 | Estado: Vivo
+- Yangus | HP: 49 | Estado: Vivo
+- Jessica | HP: 49 | Estado: Vivo
+- Angelo | HP: 20 | Estado: Vivo
+
+ENEMIGOS:
+- Goblin | HP: 0 | Estado: Muerto
+- Slime | HP: 0 | Estado: Muerto
+- Dragón | HP: 0 | Estado: Muerto
+- Esqueleto | HP: 0 | Estado: Muerto
+==============================================
+

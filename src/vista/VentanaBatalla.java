@@ -28,6 +28,7 @@ import java.util.ArrayDeque;
 
 public class VentanaBatalla extends JFrame {
 
+    private ArrayList<JPanel> hudHeroes = new ArrayList<>();
     private boolean batallaFinalizada = false;
 
     private enum ModoAccion { NINGUNO, ATACAR, HABILIDAD_ENEMIGO }
@@ -38,18 +39,16 @@ public class VentanaBatalla extends JFrame {
 
     private Image fondo;
     private JTextArea cuadroTexto;
-    private JPanel panelHeroes, panelEnemigos;
+    private JPanel panelEnemigos;
+    private JPanel panelSpritesHeroes;   // NUEVO
+
     private JPanel panelInferior;
     private JPanel panelMenuAcciones;
 
     private ArrayList<Heroe> heroes;
     private ArrayList<Enemigo> enemigos;
 
-    private ArrayList<JLabel> labelsHeroes = new ArrayList<>();
-    private ArrayList<JLabel> labelsImagenHeroes = new ArrayList<>();
-    private ArrayList<ImageIcon> iconosNormalesHeroes = new ArrayList<>();
-    private ArrayList<ImageIcon> iconosActivosHeroes = new ArrayList<>();
-
+    private ArrayList<JLabel> spritesHeroes = new ArrayList<>();
     private ArrayList<JPanel> panelesEnemigos = new ArrayList<>();
     private ArrayList<JLabel> labelsEnemigos = new ArrayList<>();
 
@@ -98,7 +97,7 @@ public class VentanaBatalla extends JFrame {
         this.enemigos = control.getEnemigos();
 
         setTitle("⚔️ Batalla en el Reino de Trodain");
-        setSize(900, 640);
+        setSize(1100, 750);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setResizable(false);
@@ -160,21 +159,76 @@ public class VentanaBatalla extends JFrame {
 
         panelFondo.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
-        // HÉROES
-        panelHeroes = new JPanel(new GridLayout(1, heroes.size(), 15, 15));
-        panelHeroes.setOpaque(false);
-        panelHeroes.setBorder(BorderFactory.createEmptyBorder(30, 50, 10, 50));
-        for (Heroe h : heroes) {
-            agregarHeroe(h);
-        }
 
-        // ENEMIGOS
+        // ================= ENEMIGOS =================
         panelEnemigos = new JPanel(new GridLayout(1, enemigos.size(), 15, 15));
         panelEnemigos.setOpaque(false);
         panelEnemigos.setBorder(BorderFactory.createEmptyBorder(50, 50, 30, 50));
+
         for (Enemigo e : enemigos) {
             agregarEnemigo(e);
         }
+
+
+        // ================= HUD SUPERIOR =================
+        JPanel panelHUD = new JPanel(new GridLayout(1, heroes.size(), 20, 0));
+        panelHUD.setOpaque(false);
+        panelHUD.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+
+        hudHeroes.clear();
+
+        for (Heroe h : heroes) {
+            JPanel cuadro = new JPanel(new GridLayout(3, 1));
+            cuadro.setOpaque(true);
+            cuadro.setBackground(new Color(20, 20, 50));
+            cuadro.setBorder(BorderFactory.createLineBorder(Color.WHITE, 2));
+
+            JLabel lblNombre = new JLabel(h.getNombre(), JLabel.CENTER);
+            lblNombre.setForeground(Color.WHITE);
+            lblNombre.setFont(new Font("Serif", Font.BOLD, 16));
+
+            JLabel lblHP = new JLabel("HP: " + h.getVidaHp(), JLabel.CENTER);
+            lblHP.setForeground(Color.GREEN);
+            lblHP.setFont(new Font("Monospaced", Font.BOLD, 14));
+
+            JLabel lblMP = new JLabel("MP: " + h.getMagiaMp(), JLabel.CENTER);
+            lblMP.setForeground(Color.CYAN);
+            lblMP.setFont(new Font("Monospaced", Font.BOLD, 14));
+
+            cuadro.add(lblNombre);
+            cuadro.add(lblHP);
+            cuadro.add(lblMP);
+
+            hudHeroes.add(cuadro);
+            panelHUD.add(cuadro);
+        }
+
+        // ==== CONTENEDOR SUPERIOR (HUD + ENEMIGOS) ====
+        JPanel contenedorSuperior = new JPanel(new BorderLayout());
+        contenedorSuperior.setOpaque(false);
+
+        contenedorSuperior.add(panelHUD, BorderLayout.NORTH);
+        contenedorSuperior.add(panelEnemigos, BorderLayout.SOUTH);
+
+        panelFondo.add(contenedorSuperior, BorderLayout.NORTH);
+
+        // Agregar contenedor superior al fondo
+        panelFondo.add(contenedorSuperior, BorderLayout.NORTH);
+
+        // SPRITES DE HÉROES (ABAJO)
+        panelSpritesHeroes = new JPanel(new GridLayout(1, heroes.size(), 30, 30));
+        panelSpritesHeroes.setPreferredSize(new Dimension(900, 180)); // << nuevo
+        panelSpritesHeroes.setOpaque(false);
+        panelSpritesHeroes.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+        for (Heroe h : heroes) {
+            JLabel sprite = crearSpriteHeroe(h);
+            spritesHeroes.add(sprite);
+            panelSpritesHeroes.add(sprite);
+        }
+        if (!heroes.isEmpty()) {
+        resaltarHeroe(heroes.get(indiceHeroeActual));
+    }
 
         // CUADRO DE TEXTO
         cuadroTexto = new JTextArea(8, 20);
@@ -300,9 +354,9 @@ public class VentanaBatalla extends JFrame {
         panelInferior.add(panelTexto, BorderLayout.CENTER);
         panelInferior.add(panelMenuAcciones, BorderLayout.EAST);
 
-        panelFondo.add(panelHeroes, BorderLayout.NORTH);
-        panelFondo.add(panelEnemigos, BorderLayout.CENTER);
+        panelFondo.add(panelSpritesHeroes, BorderLayout.CENTER);
         panelFondo.add(panelInferior, BorderLayout.SOUTH);
+
 
         add(panelFondo);
     }
@@ -366,52 +420,74 @@ public class VentanaBatalla extends JFrame {
         return archivo == null ? null : new ImageIcon(getClass().getResource(archivo));
     }
 
-    private void agregarHeroe(Heroe h) {
-        JPanel panelHeroe = new JPanel(new GridBagLayout());
-        panelHeroe.setOpaque(true);
-        panelHeroe.setBackground(new Color(20, 20, 50));
-        panelHeroe.setBorder(BorderFactory.createLineBorder(Color.WHITE, 2));
-        panelHeroe.setPreferredSize(new Dimension(280, 90));
+    private JLabel crearSpriteHeroe(Heroe h) {
+    // ⚠️ Por si acaso viene null
+    if (h == null || h.getNombre() == null) {
+        System.out.println("⚠️ Heroe nulo o sin nombre, usando sprite por defecto.");
+        return crearSpriteHeroePorDefecto();
+    }
 
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 5, 5, 5);
+    // Siempre arrancamos con una ruta por defecto (NUNCA null)
+    String ruta = "/foticos/hero_normal.png";
 
-        ImageIcon iconNormal = iconoHeroePorNombre(h.getNombre(), false);
-        ImageIcon iconActivo = iconoHeroePorNombre(h.getNombre(), true);
+    String nombre = h.getNombre().toLowerCase().trim();
 
-        JLabel lblImg = new JLabel();
-        lblImg.setOpaque(false);
-        lblImg.setHorizontalAlignment(JLabel.LEFT);
-        if (iconNormal != null) {
-            lblImg.setIcon(iconNormal);
+    if (nombre.contains("yangus")) {
+        ruta = "/foticos/yangus_normal.png";
+    } else if (nombre.contains("jessica")) {
+        ruta = "/foticos/jessica_normal.png";
+    } else if (nombre.contains("angelo")) {
+        ruta = "/foticos/angelo_normal.png";
+    } else if (nombre.contains("héroe") || nombre.contains("heroe") || nombre.contains("hero")) {
+        ruta = "/foticos/hero_normal.png";
+    } else {
+        System.out.println("⚠️ No se encontró sprite específico para: " + h.getNombre()
+                + ". Usando sprite por defecto.");
+        // ruta ya es hero_normal.png
+    }
+
+    // Buscamos el recurso de forma segura
+    URL url = getClass().getResource(ruta);
+    if (url == null) {
+        System.out.println("⚠️ No encontré la imagen en la ruta: " + ruta
+                + ". Usando sprite por defecto.");
+        return crearSpriteHeroePorDefecto();
+    }
+
+    ImageIcon icon = new ImageIcon(url);
+    Image esc = icon.getImage().getScaledInstance(130, 130, Image.SCALE_SMOOTH);
+
+    JLabel lbl = new JLabel(new ImageIcon(esc));
+    lbl.setOpaque(false);
+    lbl.setHorizontalAlignment(JLabel.CENTER);
+    lbl.setPreferredSize(new Dimension(150, 150));
+
+    return lbl;
+}
+
+// Helper para no repetir código
+    private JLabel crearSpriteHeroePorDefecto() {
+        URL url = getClass().getResource("/foticos/hero_normal.png");
+        if (url == null) {
+            // Último plan: un label vacío para que no explote nada
+            JLabel lbl = new JLabel("Héroe");
+            lbl.setOpaque(false);
+            lbl.setHorizontalAlignment(JLabel.CENTER);
+            lbl.setPreferredSize(new Dimension(150, 150));
+            return lbl;
         }
 
-        labelsImagenHeroes.add(lblImg);
-        iconosNormalesHeroes.add(iconNormal);
-        iconosActivosHeroes.add(iconActivo);
+        ImageIcon icon = new ImageIcon(url);
+        Image esc = icon.getImage().getScaledInstance(130, 130, Image.SCALE_SMOOTH);
 
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.gridheight = 3;
-        gbc.anchor = GridBagConstraints.WEST;
-        panelHeroe.add(lblImg, gbc);
-
-        JLabel lblStats = new JLabel(
-                "<html><center><b>" + h.getNombre() + "</b><br>HP: "
-                        + h.getVidaHp() + "<br>MP: " + h.getMagiaMp() + "</center></html>"
-        );
-        lblStats.setForeground(Color.WHITE);
-        lblStats.setFont(new Font("Serif", Font.BOLD, 14));
-        labelsHeroes.add(lblStats);
-
-        gbc.gridx = 1;
-        gbc.gridy = 0;
-        gbc.gridheight = 3;
-        gbc.anchor = GridBagConstraints.EAST;
-        panelHeroe.add(lblStats, gbc);
-
-        panelHeroes.add(panelHeroe);
+        JLabel lbl = new JLabel(new ImageIcon(esc));
+        lbl.setOpaque(false);
+        lbl.setHorizontalAlignment(JLabel.CENTER);
+        lbl.setPreferredSize(new Dimension(150, 150));
+        return lbl;
     }
+
+
 
     private void agregarEnemigo(Enemigo e) {
         JPanel contenedor = new JPanel(new BorderLayout());
@@ -460,7 +536,12 @@ public class VentanaBatalla extends JFrame {
 
         textoArriba.setForeground(e.esMiniJefe() ? Color.ORANGE : Color.RED);
         textoArriba.setFont(new Font("Serif", Font.BOLD, 16));
-        textoArriba.setBounds(imgX - 10, 160, w + 20, 40);
+
+        textoArriba.setOpaque(true);
+        textoArriba.setBackground(new Color(0, 0, 0, 120));
+        textoArriba.setBorder(BorderFactory.createLineBorder(Color.WHITE, 1));
+
+        textoArriba.setBounds(imgX - 10, 5, w + 20, 30);
 
         capa.add(textoArriba, JLayeredPane.PALETTE_LAYER);
 
@@ -470,11 +551,12 @@ public class VentanaBatalla extends JFrame {
                 e.esMiniJefe() ? Color.ORANGE : Color.RED, 3
         ));
         marco.setBounds(
-                imgX - 10,
-                offsetY - 10,
-                w + 25,
-                h + 15
+                imgX - 15,
+                offsetY - 5,
+                w + 30,
+                h + 20
         );
+
         capa.add(marco, JLayeredPane.PALETTE_LAYER);
 
         labelsEnemigos.add(textoArriba);
@@ -524,23 +606,7 @@ public class VentanaBatalla extends JFrame {
         }
         return null;
     }
-
-    private void resaltarHeroe(Heroe actual) {
-        for (int i = 0; i < heroes.size(); i++) {
-            Heroe h = heroes.get(i);
-            JLabel lblStats = labelsHeroes.get(i);
-            JLabel lblImg = labelsImagenHeroes.get(i);
-
-            boolean esActual = (h == actual);
-            lblStats.setForeground(esActual ? Color.YELLOW : Color.WHITE);
-
-            ImageIcon icon = esActual ? iconosActivosHeroes.get(i) : iconosNormalesHeroes.get(i);
-            if (icon != null) lblImg.setIcon(icon);
-        }
-        panelHeroes.revalidate();
-        panelHeroes.repaint();
-    }
-
+    
     private Enemigo elegirEnemigoVivoAleatorio() {
         ArrayList<Enemigo> vivos = new ArrayList<>();
         for (Enemigo e : enemigos) if (e.estaVivo()) vivos.add(e);
@@ -558,26 +624,6 @@ public class VentanaBatalla extends JFrame {
     private boolean hayVivos(List<? extends Personaje> lista) {
         for (Personaje p : lista) if (p.estaVivo()) return true;
         return false;
-    }
-
-    private void actualizarHeroes() {
-        for (int i = 0; i < heroes.size(); i++) {
-            Heroe h = heroes.get(i);
-            JLabel lbl = labelsHeroes.get(i);
-            JLabel lblImg = labelsImagenHeroes.get(i);
-            if (!h.estaVivo()) {
-                lbl.setVisible(false);
-                lblImg.setVisible(false);
-            } else {
-                lbl.setVisible(true);
-                lblImg.setVisible(true);
-                lbl.setText("<html><center><b>" + h.getNombre() +
-                        "</b><br>HP: " + h.getVidaHp() +
-                        "<br>MP: " + h.getMagiaMp() + "</center></html>");
-            }
-        }
-        panelHeroes.revalidate();
-        panelHeroes.repaint();
     }
 
     private void actualizarEnemigos() {
@@ -820,7 +866,7 @@ public class VentanaBatalla extends JFrame {
                 return;
             }
 
-            actualizarHeroes();
+            actualizarSpritesHeroes();
             finTurnoJugador();
             turnoEnemigo();
 
@@ -870,7 +916,7 @@ public class VentanaBatalla extends JFrame {
             return;
         }
 
-        actualizarHeroes();
+        actualizarSpritesHeroes();
         finTurnoJugador();
         turnoEnemigo();
     }
@@ -922,7 +968,7 @@ public class VentanaBatalla extends JFrame {
             return;
         }
 
-        actualizarHeroes();
+        actualizarSpritesHeroes();
         actualizarEnemigos();
 
         if (hayVivos(heroes) && hayVivos(enemigos)) {
@@ -941,7 +987,7 @@ public class VentanaBatalla extends JFrame {
         if (h == null) return true;
 
         if (!procesarVeneno(h)) {
-            actualizarHeroes();
+            actualizarSpritesHeroes();
             if (!hayVivos(heroes)) {
                 cuadroTexto.append("\n💀 ¡TU EQUIPO HA SIDO DERROTADO!\n");
                 deshabilitarTodo();
@@ -977,7 +1023,7 @@ public class VentanaBatalla extends JFrame {
     }
 
     private void finTurnoJugador() {
-        actualizarHeroes();
+        actualizarSpritesHeroes();
 
         indiceHeroeActual = (indiceHeroeActual + 1) % heroes.size();
 
@@ -1083,7 +1129,7 @@ public class VentanaBatalla extends JFrame {
 
         this.indiceHeroeActual = est.indiceHeroeActual;
 
-        actualizarHeroes();
+        actualizarSpritesHeroes();
         actualizarEnemigos();
 
         Heroe actual = obtenerHeroeActual();
@@ -1270,9 +1316,47 @@ public class VentanaBatalla extends JFrame {
         String resultado = h.usarItem(elegido, objetivo, heroes);
         cuadroTexto.append("\n" + resultado + "\n");
 
-        actualizarHeroes();
+        actualizarSpritesHeroes();
         finTurnoJugador();
         turnoEnemigo();
     }
+
+    private void actualizarSpritesHeroes() {
+
+        // Actualizar HUD
+        if (hudHeroes != null && hudHeroes.size() == heroes.size()) {
+            for (int i = 0; i < heroes.size(); i++) {
+                Heroe h = heroes.get(i);
+                JPanel cuadro = hudHeroes.get(i);
+
+                JLabel lblHP = (JLabel) cuadro.getComponent(1);
+                JLabel lblMP = (JLabel) cuadro.getComponent(2);
+
+                lblHP.setText("HP: " + h.getVidaHp());
+                lblMP.setText("MP: " + h.getMagiaMp());
+            }
+        }
+
+        // Refrescar panel
+        panelSpritesHeroes.revalidate();
+        panelSpritesHeroes.repaint();
+    }
+
+
+    private void resaltarHeroe(Heroe actual) {
+        for (int i = 0; i < heroes.size(); i++) {
+            JLabel sprite = spritesHeroes.get(i);
+            Heroe h = heroes.get(i);
+
+            if (h == actual) {
+                sprite.setBorder(BorderFactory.createLineBorder(Color.YELLOW, 4));
+            } else {
+                sprite.setBorder(null);
+            }
+        }
+        panelSpritesHeroes.revalidate();
+        panelSpritesHeroes.repaint();
+    }
+
 
 }

@@ -2,8 +2,6 @@ package vista;
 
 import modelo.Musica;
 import controlador.ControlJuego;
-import vista.VentanaCargarPartida;
-import vista.VentanaGremio;
 
 import javax.swing.*;
 import java.awt.*;
@@ -15,14 +13,14 @@ public class VentanaInicio extends JFrame {
     private Image imagenFondo;
     private ControlJuego control;
 
-    // 🔥 Música del menú (esta es la correcta)
+    // Música del menú
     private Musica musicaInicio = new Musica();
 
     public VentanaInicio(ControlJuego control) {
         this.control = control;
 
         setTitle("Reino de Trodain - Dragon Quest RPG");
-        setSize(900, 600);
+        setSize(1100, 750);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setResizable(false);
@@ -76,13 +74,15 @@ public class VentanaInicio extends JFrame {
         btnSalir.setBounds(50, 450, 400, 60);
         panel.add(btnSalir);
 
-        // ========== ACCIONES ==========
+        // ====================================================
+        //                       ACCIONES
+        // ====================================================
 
         btnStart.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
 
-                // 🔥 Corrección: detener música del menú ANTES de abrir batalla
+                // detener música solo al ir a batalla
                 musicaInicio.parar();
 
                 control.reiniciarPartida();
@@ -94,9 +94,10 @@ public class VentanaInicio extends JFrame {
         btnCargar.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
-                musicaInicio.parar(); // 🔥 igual detenemos música antes de cargar
-                new VentanaCargarPartida(VentanaInicio.this).setVisible(true);
-                dispose();
+
+                // ya NO detenemos música aquí
+                new VentanaCargarPartida(VentanaInicio.this);
+                setVisible(false);
             }
         });
 
@@ -133,9 +134,10 @@ public class VentanaInicio extends JFrame {
         btnGremio.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
-                musicaInicio.parar(); // Opcional pero recomendado
-                new VentanaGremio().setVisible(true);
-                dispose();
+
+                // ya NO detenemos música aquí
+                new VentanaGremio(VentanaInicio.this);
+                setVisible(false);
             }
         });
 
@@ -156,7 +158,7 @@ public class VentanaInicio extends JFrame {
 
         setVisible(true);
 
-        // 🔥 Corrección: iniciamos música del menú correctamente
+        // Música del menú
         musicaInicio.reproducirLoop("/sonidos/intro.wav");
     }
 

@@ -12,7 +12,7 @@ public class VentanaCargarPartida extends JFrame {
 
     private JList<String> listaPartidas;
     private DefaultListModel<String> modeloLista;
-    private JFrame ventanaInicio;  // para cerrar la ventana de inicio al cargar
+    private JFrame ventanaInicio;
 
     private static final String RUTA_CARPETA = "partidas";
 
@@ -23,10 +23,20 @@ public class VentanaCargarPartida extends JFrame {
         setSize(400, 300);
         setLocationRelativeTo(null);
         setResizable(false);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+
+        // Al cerrar, volver al menú principal
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent e) {
+                ventanaInicio.setVisible(true);
+            }
+        });
 
         construirInterfaz();
         cargarArchivosPartida();
+
+        setVisible(true);
     }
 
     private void construirInterfaz() {
@@ -50,7 +60,11 @@ public class VentanaCargarPartida extends JFrame {
         JButton btnCancelar = new JButton("Cancelar");
 
         btnCargar.addActionListener(e -> cargarSeleccionada());
-        btnCancelar.addActionListener(e -> dispose());
+
+        btnCancelar.addActionListener(e -> {
+            ventanaInicio.setVisible(true);
+            dispose();
+        });
 
         panelBotones.add(btnCargar);
         panelBotones.add(btnCancelar);
@@ -60,7 +74,6 @@ public class VentanaCargarPartida extends JFrame {
         setContentPane(panel);
     }
 
-    // Lista los archivos .json en la carpeta "partidas"
     private void cargarArchivosPartida() {
         modeloLista.clear();
 
@@ -105,13 +118,10 @@ public class VentanaCargarPartida extends JFrame {
         ControlJuego ctrl = partida.getControlador();
         int turno = partida.getTurno();
 
-        // Abrir batalla con los datos cargados
+        // Abrir la batalla cargada
         new VentanaBatalla(ctrl, turno);
 
-        // Cerrar ventana de inicio (si sigue abierta) y esta ventana
-        if (ventanaInicio != null) {
-            ventanaInicio.dispose();
-        }
+        ventanaInicio.dispose();
         dispose();
     }
 }

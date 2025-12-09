@@ -13,13 +13,24 @@ public class VentanaGremio extends JFrame {
     private JTextArea areaTexto;
     private Image imagenFondo;
 
-    public VentanaGremio() {
+    private JFrame ventanaPadre; // ← referencia a VentanaInicio
+
+    public VentanaGremio(JFrame ventanaPadre) {
+        this.ventanaPadre = ventanaPadre;
 
         setTitle("Gremio de Aventureros");
         setSize(800, 550);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setResizable(false);
+
+        // Al cerrar la ventana, volver al menú de inicio
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent e) {
+                ventanaPadre.setVisible(true);
+            }
+        });
 
         // ===== FONDO PRINCIPAL =====
         imagenFondo = new ImageIcon(getClass().getResource("/foticos/Gremio.png")).getImage();
@@ -42,15 +53,12 @@ public class VentanaGremio extends JFrame {
         titulo.setBounds(0, 20, getWidth(), 60);
         panel.add(titulo);
 
-        // =============================================================
         // ======================= MARCO ESTÉTICO ======================
-        // =============================================================
-
         JPanel marco = new JPanel();
         marco.setBounds(380, 100, 380, 350);
         marco.setLayout(new BorderLayout());
-        marco.setBackground(new Color(230, 215, 175)); // tono pergamino suave
-        marco.setBorder(BorderFactory.createLineBorder(new Color(100, 70, 30), 8)); // marco madera
+        marco.setBackground(new Color(230, 215, 175));
+        marco.setBorder(BorderFactory.createLineBorder(new Color(100, 70, 30), 8));
         panel.add(marco);
 
         // ===== ÁREA DE TEXTO =====
@@ -69,10 +77,7 @@ public class VentanaGremio extends JFrame {
 
         marco.add(scroll, BorderLayout.CENTER);
 
-        // =============================================================
         // ============================ BOTONES =========================
-        // =============================================================
-
         JButton btnRegistrar = crearBoton("Registrar aventurero");
         JButton btnAtender = crearBoton("Atender siguiente");
         JButton btnVerSiguiente = crearBoton("Ver siguiente");
@@ -94,24 +99,22 @@ public class VentanaGremio extends JFrame {
         panel.add(btnVaciar);
         panel.add(btnSalir);
 
-        // =============================================================
         // ========================== EVENTOS ===========================
-        // =============================================================
-
         btnRegistrar.addActionListener(e -> mostrarPergaminoRegistro());
         btnAtender.addActionListener(e -> atenderSiguiente());
         btnVerSiguiente.addActionListener(e -> mostrarSiguiente());
         btnVerCola.addActionListener(e -> mostrarCola());
         btnVaciar.addActionListener(e -> vaciarCola());
-        btnSalir.addActionListener(e -> dispose());
+
+        btnSalir.addActionListener(e -> {
+            ventanaPadre.setVisible(true);
+            dispose();
+        });
 
         setVisible(true);
     }
 
-    // =============================================================
-    // =============== VENTANA EMERGENTE CON PERGAMINO ==============
-    // =============================================================
-
+    // =================== PERGAMINO EMERGENTE ============================
     private void mostrarPergaminoRegistro() {
 
         Image pergamino = new ImageIcon(getClass().getResource("/foticos/Pergamino.png")).getImage();
@@ -132,40 +135,21 @@ public class VentanaGremio extends JFrame {
         JLabel lbl1 = new JLabel("Nombre:");
         lbl1.setBounds(50, 80, 150, 30);
         lbl1.setFont(fuenteTexto);
-        lbl1.setForeground(new Color(60, 40, 20));
 
         JLabel lbl2 = new JLabel("Nivel:");
         lbl2.setBounds(50, 140, 150, 30);
         lbl2.setFont(fuenteTexto);
-        lbl2.setForeground(new Color(60, 40, 20));
 
         JTextField txtNombre = new JTextField();
         txtNombre.setBounds(160, 80, 200, 32);
-        txtNombre.setBackground(new Color(245, 230, 200));
-        txtNombre.setForeground(new Color(50, 30, 10));
-        txtNombre.setBorder(BorderFactory.createLineBorder(new Color(100, 70, 30), 3));
-        txtNombre.setFont(new Font("Serif", Font.PLAIN, 20));
 
         JTextField txtNivel = new JTextField();
         txtNivel.setBounds(160, 140, 80, 32);
-        txtNivel.setBackground(new Color(245, 230, 200));
-        txtNivel.setForeground(new Color(50, 30, 10));
-        txtNivel.setBorder(BorderFactory.createLineBorder(new Color(100, 70, 30), 3));
-        txtNivel.setFont(new Font("Serif", Font.PLAIN, 20));
 
         fondo.add(lbl1);
         fondo.add(txtNombre);
         fondo.add(lbl2);
         fondo.add(txtNivel);
-
-        // PERSONALIZACIÓN DE BOTONES
-        UIManager.put("OptionPane.background", new Color(230, 210, 170));
-        UIManager.put("Panel.background", new Color(230, 210, 170));
-
-        UIManager.put("Button.background", new Color(200, 180, 120));
-        UIManager.put("Button.font", new Font("Serif", Font.BOLD, 20));
-        UIManager.put("Button.foreground", new Color(60, 40, 20));
-        UIManager.put("Button.border", BorderFactory.createLineBorder(new Color(90, 60, 20), 3));
 
         int r = JOptionPane.showConfirmDialog(
                 this,
@@ -196,10 +180,7 @@ public class VentanaGremio extends JFrame {
         }
     }
 
-    // =============================================================
-    // ================= BOTÓN ESTÉTICA RPG ==========================
-    // =============================================================
-
+    // ====================== BOTÓN ESTÉTICA ==============================
     private JButton crearBoton(String texto) {
         JButton btn = new JButton(texto);
         btn.setFont(new Font("Serif", Font.BOLD, 22));
@@ -210,10 +191,7 @@ public class VentanaGremio extends JFrame {
         return btn;
     }
 
-    // =============================================================
-    // ========================= LÓGICA =============================
-    // =============================================================
-
+    // =========================== LÓGICA ================================
     private void atenderSiguiente() {
         Aventurero atendido = colaAventureros.poll();
 
