@@ -9,7 +9,7 @@
       },
       "habilidades": [],
       "nombre": "Héroe",
-      "vidaHp": 92,
+      "vidaHp": 67,
       "magiaMp": 30,
       "ataque": 28,
       "defensa": 10,
@@ -26,7 +26,7 @@
       },
       "habilidades": [],
       "nombre": "Yangus",
-      "vidaHp": 102,
+      "vidaHp": 104,
       "magiaMp": 20,
       "ataque": 54,
       "defensa": 12,
@@ -69,8 +69,8 @@
         }
       ],
       "nombre": "Jessica",
-      "vidaHp": 80,
-      "magiaMp": 50,
+      "vidaHp": 61,
+      "magiaMp": 30,
       "ataque": 20,
       "defensa": 8,
       "velocidad": 18,
@@ -82,7 +82,6 @@
         "Hierba Pequeña": 1,
         "Poción de Defensa": 1,
         "Hierba Sanadora": 1,
-        "Bendición divina": 1,
         "Campanilla Despertar": 1
       },
       "habilidades": [
@@ -104,8 +103,8 @@
         }
       ],
       "nombre": "Angelo",
-      "vidaHp": 64,
-      "magiaMp": 28,
+      "vidaHp": 63,
+      "magiaMp": 40,
       "ataque": 24,
       "defensa": 9,
       "velocidad": 16,
@@ -116,36 +115,36 @@
   "enemigos": [
     {
       "tipo": "agresivo",
-      "miniJefe": false,
+      "miniJefe": true,
       "nombre": "Goblin",
-      "vidaHp": 70,
+      "vidaHp": 120,
       "magiaMp": 0,
-      "ataque": 20,
-      "defensa": 8,
+      "ataque": 35,
+      "defensa": 18,
       "velocidad": 10,
       "vive": true,
       "protegido": false
     },
     {
       "tipo": "agresivo",
-      "miniJefe": true,
+      "miniJefe": false,
       "nombre": "Slime",
-      "vidaHp": 110,
+      "vidaHp": 0,
       "magiaMp": 0,
-      "ataque": 30,
-      "defensa": 15,
+      "ataque": 15,
+      "defensa": 5,
       "velocidad": 8,
-      "vive": true,
+      "vive": false,
       "protegido": false
     },
     {
       "tipo": "defensivo",
       "miniJefe": false,
       "nombre": "Dragón",
-      "vidaHp": 105,
+      "vidaHp": 60,
       "magiaMp": 20,
       "ataque": 30,
-      "defensa": 25,
+      "defensa": 15,
       "velocidad": 14,
       "vive": true,
       "protegido": false
@@ -154,7 +153,7 @@
       "tipo": "agresivo",
       "miniJefe": false,
       "nombre": "Esqueleto",
-      "vidaHp": 26,
+      "vidaHp": 62,
       "magiaMp": 0,
       "ataque": 18,
       "defensa": 9,
@@ -163,6 +162,6 @@
       "protegido": false
     }
   ],
-  "turno": 6,
+  "turno": 11,
   "indiceHeroeActual": 0
 }

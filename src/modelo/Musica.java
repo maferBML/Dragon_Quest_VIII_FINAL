@@ -9,14 +9,16 @@ public class Musica {
 
     public void reproducirLoop(String ruta) {
         try {
+            // Si ya había audio sonando, lo apagamos completamente
+            if (clip != null) {
+                if (clip.isRunning()) clip.stop();
+                clip.flush();
+                clip.close();
+                clip = null; // MUY IMPORTANTE
+            }
+
             URL url = getClass().getResource(ruta);
             AudioInputStream audio = AudioSystem.getAudioInputStream(url);
-
-            // Si ya hay un clip sonando, lo cerramos antes de abrir uno nuevo
-            if (clip != null && clip.isOpen()) {
-                clip.stop();
-                clip.close();
-            }
 
             clip = AudioSystem.getClip();
             clip.open(audio);
@@ -27,6 +29,7 @@ public class Musica {
             System.out.println("Error al cargar sonido: " + e.getMessage());
         }
     }
+
 
     public void parar() {
         try {

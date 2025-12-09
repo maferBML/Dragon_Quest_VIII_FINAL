@@ -129,6 +129,7 @@ public class Enemigo extends Personaje {
     }
 
     public void accionAutomatica(Personaje enemigo) {
+        inicializarRandom();
         int decision = random.nextInt(100);
         if (getEstado() != null && getEstado().getNombre().equals("Paralizado")) {
             System.out.println(getNombre() + " está paralizado y no puede actuar.");
@@ -157,6 +158,7 @@ public class Enemigo extends Personaje {
     // ================== MÉTODOS PARA LA GUI ==================
 
     public String accionAutomaticaTexto(Heroe enemigo) {
+        inicializarRandom();
         StringBuilder sb = new StringBuilder();
 
         if (getEstado() != null && getEstado().getNombre().equals("Paralizado")) {
@@ -179,6 +181,7 @@ public class Enemigo extends Personaje {
     }
 
     private String ataqueTextoInterno(Personaje enemigo) {
+        inicializarRandom();
         StringBuilder sb = new StringBuilder();
 
         if (enemigo == null || !enemigo.estaVivo()) {
@@ -225,4 +228,11 @@ public class Enemigo extends Personaje {
 
         return sb.toString();
     }
+
+    private void inicializarRandom() {
+        if (this.random == null) {
+            this.random = new Random();
+        }
+    }
+
 }

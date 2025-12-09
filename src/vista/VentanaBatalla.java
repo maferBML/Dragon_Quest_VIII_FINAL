@@ -282,7 +282,7 @@ public class VentanaBatalla extends JFrame {
             if (op == JOptionPane.YES_OPTION) {
                 guardarPartida();
             }
-
+            musicaBatalla.parar();
             System.exit(0);
         });
 

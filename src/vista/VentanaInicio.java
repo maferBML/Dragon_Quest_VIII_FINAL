@@ -14,7 +14,9 @@ public class VentanaInicio extends JFrame {
 
     private Image imagenFondo;
     private ControlJuego control;
-    private Musica musica = new Musica();
+
+    // 🔥 Música del menú (esta es la correcta)
+    private Musica musicaInicio = new Musica();
 
     public VentanaInicio(ControlJuego control) {
         this.control = control;
@@ -75,10 +77,14 @@ public class VentanaInicio extends JFrame {
         panel.add(btnSalir);
 
         // ========== ACCIONES ==========
+
         btnStart.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
-                musica.parar();
+
+                // 🔥 Corrección: detener música del menú ANTES de abrir batalla
+                musicaInicio.parar();
+
                 control.reiniciarPartida();
                 new VentanaBatalla(control);
                 dispose();
@@ -88,7 +94,9 @@ public class VentanaInicio extends JFrame {
         btnCargar.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
+                musicaInicio.parar(); // 🔥 igual detenemos música antes de cargar
                 new VentanaCargarPartida(VentanaInicio.this).setVisible(true);
+                dispose();
             }
         });
 
@@ -125,17 +133,21 @@ public class VentanaInicio extends JFrame {
         btnGremio.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
+                musicaInicio.parar(); // Opcional pero recomendado
                 new VentanaGremio().setVisible(true);
+                dispose();
             }
         });
 
         btnSalir.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
+                musicaInicio.parar();
                 System.exit(0);
             }
         });
 
+        // Animaciones
         animacionHoverDeslizar(btnStart);
         animacionHoverDeslizar(btnCargar);
         animacionHoverDeslizar(btnHistorial);
@@ -144,8 +156,13 @@ public class VentanaInicio extends JFrame {
 
         setVisible(true);
 
-        musica.reproducirLoop("/sonidos/intro.wav");
+        // 🔥 Corrección: iniciamos música del menú correctamente
+        musicaInicio.reproducirLoop("/sonidos/intro.wav");
     }
+
+    // ===============================================================
+    //                     MÉTODOS AUXILIARES
+    // ===============================================================
 
     private JLabel crearBotonMenu(String texto) {
         JLabel lbl = new JLabel(texto);
