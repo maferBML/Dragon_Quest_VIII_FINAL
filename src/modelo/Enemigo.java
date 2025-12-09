@@ -5,7 +5,8 @@ import java.util.Random;
 public class Enemigo extends Personaje {
     private String tipo;
     private boolean miniJefe;
-    private Random random = new Random();
+    private transient Random random = new Random();
+
 
     public Enemigo(String nombre, int vidaHp, int magiaMp, int ataque, int defensa, int velocidad, String tipo) {
         super(nombre, vidaHp, magiaMp, ataque, defensa, velocidad);
@@ -20,6 +21,69 @@ public class Enemigo extends Personaje {
             setVidaHp(getVidaHp() + 50);
             setAtaque(getAtaque() + 15);
             setDefensa(getDefensa() + 10);
+        }
+    }
+
+    // ================== SERIALIZAR ==================
+    /**
+     * Convierte un enemigo en un String listo para guardar en un archivo.
+     * Formato:
+     * ENEMIGO;nombre;vida;mp;ataque;defensa;velocidad;tipo;miniJefe;vive;estado
+     */
+    public String serializar() {
+        String estadoTexto = (getEstado() == null) ? "null" : getEstado().getNombre();
+        return "ENEMIGO;" +
+                getNombre() + ";" +
+                getVidaHp() + ";" +
+                getMagiaMp() + ";" +
+                getAtaque() + ";" +
+                getDefensa() + ";" +
+                getVelocidad() + ";" +
+                tipo + ";" +
+                (miniJefe ? "1" : "0") + ";" +
+                (estaVivo() ? "1" : "0") + ";" +
+                estadoTexto;
+    }
+
+    // ================== DESERIALIZAR ==================
+    public static Enemigo deserializar(String linea) {
+        try {
+            if (linea == null || linea.isBlank()) return null;
+            if (!linea.startsWith("ENEMIGO;")) return null;
+
+            String[] p = linea.split(";", -1);
+
+            // Validación mínima
+            if (p.length < 11) {
+                System.out.println("Línea de enemigo inválida: " + linea);
+                return null;
+            }
+
+            String nombre = p[1];
+            int vida = Integer.parseInt(p[2]);
+            int mp = Integer.parseInt(p[3]);
+            int atq = Integer.parseInt(p[4]);
+            int def = Integer.parseInt(p[5]);
+            int vel = Integer.parseInt(p[6]);
+            String tipo = p[7];
+            boolean mini = p[8].equals("1");
+            boolean vivo = p[9].equals("1");
+            String estadoTxt = p[10];
+
+            Enemigo e = new Enemigo(nombre, vida, mp, atq, def, vel, tipo);
+            e.miniJefe = mini;
+            e.setVive(vivo);
+
+            if (!estadoTxt.equals("null")) {
+                e.setEstado(new Estado(estadoTxt, 1));
+            }
+
+            return e;
+
+        } catch (Exception ex) {
+            System.out.println("Error deserializando enemigo: " + linea);
+            ex.printStackTrace();
+            return null;
         }
     }
 
@@ -51,7 +115,7 @@ public class Enemigo extends Personaje {
 
         if (miniJefe && critico && enemigo.estaVivo()) {
             if (random.nextInt(100) < 70) {
-                int duracionSueño = random.nextInt(3) + 1; // 1-3 turnos
+                int duracionSueño = random.nextInt(3) + 1;
                 enemigo.setEstado(new Estado("Sueño", duracionSueño));
                 System.out.println(enemigo.getNombre() + " ha caído dormido por " + duracionSueño + " turnos!");
             }
@@ -63,7 +127,6 @@ public class Enemigo extends Personaje {
             System.out.println(enemigo.getNombre() + " ha sido derrotado.");
         }
     }
-
 
     public void accionAutomatica(Personaje enemigo) {
         int decision = random.nextInt(100);
@@ -91,7 +154,7 @@ public class Enemigo extends Personaje {
 
     public boolean esMiniJefe() { return miniJefe; }
 
-    // ================== MÉTODO EXTRA PARA LA GUI ==================
+    // ================== MÉTODOS PARA LA GUI ==================
 
     public String accionAutomaticaTexto(Heroe enemigo) {
         StringBuilder sb = new StringBuilder();
@@ -130,9 +193,8 @@ public class Enemigo extends Personaje {
         if (enemigo.isProtegido()) {
             danioBase = (int) (danioBase * 0.30);
             sb.append(enemigo.getNombre())
-            .append(" reduce el daño gracias a su postura defensiva.\n");
+              .append(" reduce el daño gracias a su postura defensiva.\n");
         }
-
 
         if (miniJefe && random.nextInt(100) < 40) {
             critico = true;
@@ -147,7 +209,7 @@ public class Enemigo extends Personaje {
 
         if (miniJefe && critico && enemigo.estaVivo()) {
             if (random.nextInt(100) < 70) {
-                int duracionSueño = random.nextInt(3) + 1; // 1-3 turnos
+                int duracionSueño = random.nextInt(3) + 1;
                 enemigo.setEstado(new Estado("Sueño", duracionSueño));
                 sb.append(enemigo.getNombre())
                   .append(" ha caído dormido por ")

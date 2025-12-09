@@ -9,6 +9,14 @@ public class Estado {
         this.duracion = duracion;
     }
 
+    // ============================
+    // NUEVO: Constructor seguro para partidas cargadas
+    // ============================
+    public Estado(String nombre) {
+        this.nombre = nombre;
+        this.duracion = 1;  // duración mínima para que no crashee
+    }
+
     public String getNombre() { return nombre; }
     public int getDuracion() { return duracion; }
     public void reducirDuracion() { if (duracion > 0) duracion--; }
@@ -17,7 +25,7 @@ public class Estado {
     public void aplicarEfecto(Personaje p) {
 
         // =====================================================
-        //   ESTADO: VENENO (ya lo tenías)
+        //   ESTADO: VENENO  (lo tuyo, intacto)
         // =====================================================
         if (nombre.equalsIgnoreCase("Envenenado")) {
 
@@ -34,12 +42,11 @@ public class Estado {
             }
 
             reducirDuracion();
-
             return;
         }
 
         // =====================================================
-        //   ESTADO: CURACIÓN REGENERATIVA (nuevo)
+        //   ESTADO: CURACIÓN REGENERATIVA  (tu nuevo ítem)
         // =====================================================
         if (nombre.equalsIgnoreCase("CuracionRegenerativa")) {
 
@@ -61,8 +68,7 @@ public class Estado {
         }
 
         // =====================================================
-        //   OTROS ESTADOS (si agregas más en el futuro)
+        //   FUTUROS ESTADOS
         // =====================================================
-        // Aquí puedes seguir añadiendo más efectos si aparecen.
     }
 }

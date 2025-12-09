@@ -1,0 +1,170 @@
+{
+  "heroes": [
+    {
+      "inventario": {
+        "Hierba Pequeña": 1,
+        "Poción de Defensa": 1,
+        "Hierba Sanadora": 1,
+        "Talismán del valor": 1,
+        "Campanilla Despertar": 1
+      },
+      "habilidades": [],
+      "nombre": "Héroe",
+      "vidaHp": 90,
+      "magiaMp": 30,
+      "ataque": 25,
+      "defensa": 10,
+      "velocidad": 15,
+      "vive": true,
+      "protegido": false
+    },
+    {
+      "inventario": {
+        "Hierba Pequeña": 1,
+        "Hacha oxidada gigante": 1,
+        "Poción de Defensa": 1,
+        "Hierba Sanadora": 1,
+        "Campanilla Despertar": 1
+      },
+      "habilidades": [],
+      "nombre": "Yangus",
+      "vidaHp": 117,
+      "magiaMp": 20,
+      "ataque": 27,
+      "defensa": 12,
+      "velocidad": 12,
+      "vive": true,
+      "protegido": false
+    },
+    {
+      "inventario": {
+        "Hierba Pequeña": 1,
+        "Amuleto de maná arcano": 1,
+        "Poción de Defensa": 1,
+        "Hierba Sanadora": 1,
+        "Campanilla Despertar": 1
+      },
+      "habilidades": [
+        {
+          "nombre": "Fuego",
+          "tipo": "daño",
+          "poder": 25,
+          "costeMp": 10,
+          "duracion": 0,
+          "estado": "Normal"
+        },
+        {
+          "nombre": "Curar",
+          "tipo": "curación",
+          "poder": 30,
+          "costeMp": 8,
+          "duracion": 0,
+          "estado": "Normal"
+        },
+        {
+          "nombre": "Veneno",
+          "tipo": "estado",
+          "poder": 0,
+          "costeMp": 6,
+          "duracion": 5,
+          "estado": "Envenenado"
+        }
+      ],
+      "nombre": "Jessica",
+      "vidaHp": 90,
+      "magiaMp": 50,
+      "ataque": 20,
+      "defensa": 8,
+      "velocidad": 18,
+      "vive": true,
+      "protegido": false
+    },
+    {
+      "inventario": {
+        "Hierba Pequeña": 1,
+        "Poción de Defensa": 1,
+        "Hierba Sanadora": 1,
+        "Bendición divina": 1,
+        "Campanilla Despertar": 1
+      },
+      "habilidades": [
+        {
+          "nombre": "Rayo Divino",
+          "tipo": "daño",
+          "poder": 35,
+          "costeMp": 12,
+          "duracion": 0,
+          "estado": "Normal"
+        },
+        {
+          "nombre": "Curación Menor",
+          "tipo": "curación",
+          "poder": 20,
+          "costeMp": 6,
+          "duracion": 0,
+          "estado": "Normal"
+        }
+      ],
+      "nombre": "Angelo",
+      "vidaHp": 40,
+      "magiaMp": 40,
+      "ataque": 24,
+      "defensa": 9,
+      "velocidad": 16,
+      "vive": true,
+      "protegido": false
+    }
+  ],
+  "enemigos": [
+    {
+      "tipo": "agresivo",
+      "miniJefe": false,
+      "nombre": "Goblin",
+      "vidaHp": 70,
+      "magiaMp": 0,
+      "ataque": 20,
+      "defensa": 8,
+      "velocidad": 10,
+      "vive": true,
+      "protegido": false
+    },
+    {
+      "tipo": "agresivo",
+      "miniJefe": false,
+      "nombre": "Slime",
+      "vidaHp": 60,
+      "magiaMp": 0,
+      "ataque": 15,
+      "defensa": 5,
+      "velocidad": 8,
+      "vive": true,
+      "protegido": false
+    },
+    {
+      "tipo": "defensivo",
+      "miniJefe": true,
+      "nombre": "Dragón",
+      "vidaHp": 160,
+      "magiaMp": 20,
+      "ataque": 45,
+      "defensa": 25,
+      "velocidad": 14,
+      "vive": true,
+      "protegido": false
+    },
+    {
+      "tipo": "agresivo",
+      "miniJefe": false,
+      "nombre": "Esqueleto",
+      "vidaHp": 47,
+      "magiaMp": 0,
+      "ataque": 18,
+      "defensa": 9,
+      "velocidad": 13,
+      "vive": true,
+      "protegido": false
+    }
+  ],
+  "turno": 5,
+  "indiceHeroeActual": 0
+}

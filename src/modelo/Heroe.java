@@ -3,8 +3,13 @@ package modelo;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 import java.util.Random;
+
+import com.google.gson.annotations.Expose;
+import com.google.gson.annotations.SerializedName;
+
 
 import modelo.excepciones.DefenderException;
 import modelo.excepciones.ObjetivoInvalidoException;
@@ -321,6 +326,7 @@ public class Heroe extends Personaje {
 
         return sb.toString();
     }
+
     public HashMap<String, Integer> getInventario() {
         return inventario;
     }
@@ -333,70 +339,160 @@ public class Heroe extends Personaje {
         }
     }
 
-public String usarItem(String nombreItem, Heroe objetivo, ArrayList<Heroe> todosLosHeroes) {
+    public String usarItem(String nombreItem, Heroe objetivo, ArrayList<Heroe> todosLosHeroes) {
 
-    if (!inventario.containsKey(nombreItem)) {
-        return "No tienes ese objeto.";
+        if (!inventario.containsKey(nombreItem)) {
+            return "No tienes ese objeto.";
+        }
+
+        // Reducir cantidad
+        int cant = inventario.get(nombreItem);
+        if (cant <= 1) inventario.remove(nombreItem);
+        else inventario.put(nombreItem, cant - 1);
+
+        Random r = new Random();
+
+        switch (nombreItem.toLowerCase()) {
+
+            // =================== ÍTEMS COMUNES ===================
+
+            // 1. Hierba Sanadora → cura por 5 turnos, 5–12 HP por turno
+            case "hierba sanadora":
+                objetivo.setEstado(new Estado("CuracionRegenerativa", 5));
+                return objetivo.getNombre() + " recibirá curación continua por 5 turnos.";
+
+            // 2. Despertar a un compañero
+            case "campanilla despertar":
+                if (objetivo.getEstado() != null && objetivo.getEstado().getNombre().equalsIgnoreCase("Sueño")) {
+                    objetivo.setEstado(null);
+                    return objetivo.getNombre() + " ha despertado.";
+                }
+                return objetivo.getNombre() + " no estaba dormido.";
+
+            // 3. Cura simple de 10 HP
+            case "hierba pequeña":
+                objetivo.setVidaHp(objetivo.getVidaHp() + 10);
+                return objetivo.getNombre() + " recupera 10 HP.";
+
+            // 4. Buff defensivo
+            case "poción de defensa":
+                objetivo.setDefensa(objetivo.getDefensa() + 3);
+                return objetivo.getNombre() + " aumenta su defensa en +3 por un turno.";
+
+            // =================== ÍTEMS ESPECIALES ===================
+            // NO deben pedir objetivo, así que ignoramos 'objetivo'
+
+            case "talismán del valor":
+                this.setAtaque(this.getAtaque() + 3);
+                return "El ataque de " + this.getNombre() + " aumenta permanentemente en +3.";
+
+            case "hacha oxidada gigante":
+                this.setAtaque(this.getAtaque() * 2);
+                return this.getNombre() + " duplicará su próximo ataque.";
+
+            case "amuleto de maná arcano":
+                this.setMagiaMp(this.getMagiaMp() + 20);
+                return this.getNombre() + " recupera 20 MP.";
+
+            case "bendición divina":
+                for (Heroe h : todosLosHeroes) {
+                    if (h.estaVivo()) h.setVidaHp(h.getVidaHp() + 25);
+                }
+                return "Todos los aliados recuperan 25 HP.";
+
+            default:
+                return "Este objeto no tiene efecto programado.";
+        }
     }
 
-    // Reducir cantidad
-    int cant = inventario.get(nombreItem);
-    if (cant <= 1) inventario.remove(nombreItem);
-    else inventario.put(nombreItem, cant - 1);
+    // ==========================================================
+    // ===============   SERIALIZACIÓN DE HÉROE   ===============
+    // ==========================================================
+    public String serializar() {
+        // Estado en texto (solo el nombre para no depender de getters extra)
+        String estadoTxt = "null";
+        if (getEstado() != null) {
+            estadoTxt = getEstado().getNombre();
+        }
 
-    Random r = new Random();
+        // Inventario: item1:cantidad1,item2:cantidad2,...
+        StringBuilder inv = new StringBuilder();
+        for (Map.Entry<String, Integer> entry : inventario.entrySet()) {
+            if (inv.length() > 0) inv.append(",");
+            inv.append(entry.getKey()).append(":").append(entry.getValue());
+        }
 
-    switch (nombreItem.toLowerCase()) {
+        return "HEROE;"
+                + getNombre() + ";"
+                + getVidaHp() + ";"
+                + getMagiaMp() + ";"
+                + getAtaque() + ";"
+                + getDefensa() + ";"
+                + getVelocidad() + ";"
+                + (estaVivo() ? "1" : "0") + ";"
+                + estadoTxt + ";"
+                + inv.toString();
+    }
 
-        // =================== ÍTEMS COMUNES ===================
+    public static Heroe deserializar(String linea) {
+        try {
+            String[] p = linea.split(";", -1); // -1 para no perder campos vacíos
 
-        // 1. Hierba Sanadora → cura por 5 turnos, 5–12 HP por turno
-        case "hierba sanadora":
-            objetivo.setEstado(new Estado("CuracionRegenerativa", 5));
-            return objetivo.getNombre() + " recibirá curación continua por 5 turnos.";
+            // p[0] = "HEROE"
+            String nombre = p[1];
+            int vida = Integer.parseInt(p[2]);
+            int mp = Integer.parseInt(p[3]);
+            int atq = Integer.parseInt(p[4]);
+            int def = Integer.parseInt(p[5]);
+            int vel = Integer.parseInt(p[6]);
+            boolean vivo = p[7].equals("1");
+            String estadoTxt = p[8];
+            String inventarioTxt = p.length > 9 ? p[9] : "";
 
-        // 2. Despertar a un compañero
-        case "campanilla despertar":
-            if (objetivo.getEstado() != null && objetivo.getEstado().getNombre().equalsIgnoreCase("Sueño")) {
-                objetivo.setEstado(null);
-                return objetivo.getNombre() + " ha despertado.";
+            Heroe h = new Heroe(nombre, vida, mp, atq, def, vel);
+            h.setVive(vivo);
+
+            if (!"null".equalsIgnoreCase(estadoTxt)) {
+                // Duración por defecto 1 (si quieres, puedes ajustar)
+                h.setEstado(new Estado(estadoTxt, 1));
             }
-            return objetivo.getNombre() + " no estaba dormido.";
 
-        // 3. Cura simple de 10 HP
-        case "hierba pequeña":
-            objetivo.setVidaHp(objetivo.getVidaHp() + 10);
-            return objetivo.getNombre() + " recupera 10 HP.";
-
-        // 4. Buff defensivo
-        case "poción de defensa":
-            objetivo.setDefensa(objetivo.getDefensa() + 3);
-            return objetivo.getNombre() + " aumenta su defensa en +3 por un turno.";
-
-        // =================== ÍTEMS ESPECIALES ===================
-        // NO deben pedir objetivo, así que ignoramos 'objetivo'
-
-        case "talismán del valor":
-            this.setAtaque(this.getAtaque() + 3);
-            return "El ataque de " + this.getNombre() + " aumenta permanentemente en +3.";
-
-        case "hacha oxidada gigante":
-            this.setAtaque(this.getAtaque() * 2);
-            return this.getNombre() + " duplicará su próximo ataque.";
-
-        case "amuleto de maná arcano":
-            this.setMagiaMp(this.getMagiaMp() + 20);
-            return this.getNombre() + " recupera 20 MP.";
-
-        case "bendición divina":
-            for (Heroe h : todosLosHeroes) {
-                if (h.estaVivo()) h.setVidaHp(h.getVidaHp() + 25);
+            // Reconstruir inventario
+            if (inventarioTxt != null && !inventarioTxt.isBlank()) {
+                String[] items = inventarioTxt.split(",");
+                for (String it : items) {
+                    String[] kv = it.split(":");
+                    if (kv.length == 2) {
+                        String nombreItem = kv[0];
+                        int cant = Integer.parseInt(kv[1]);
+                        for (int i = 0; i < cant; i++) {
+                            h.agregarItem(nombreItem);
+                        }
+                    }
+                }
             }
-            return "Todos los aliados recuperan 25 HP.";
 
-        default:
-            return "Este objeto no tiene efecto programado.";
+            // Volver a asignar las habilidades por defecto según el nombre
+            asignarHabilidadesPorDefecto(h);
+
+            return h;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    // Habilidades por defecto según el nombre, para partidas cargadas
+    private static void asignarHabilidadesPorDefecto(Heroe h) {
+        if (h.getNombre().equalsIgnoreCase("Jessica")) {
+            h.agregarHabilidad(new Habilidad("Fuego", "daño", 25, 10));
+            h.agregarHabilidad(new Habilidad("Curar", "curación", 30, 8));
+            h.agregarHabilidad(new Habilidad("Veneno", "estado", 0, 6, 5, "Envenenado"));
+        } else if (h.getNombre().equalsIgnoreCase("Angelo")) {
+            h.agregarHabilidad(new Habilidad("Rayo Divino", "daño", 35, 12));
+            h.agregarHabilidad(new Habilidad("Curación Menor", "curación", 20, 6));
+        }
+        // Héroe y Yangus no tenían habilidades especiales aquí.
     }
 }
-
-    }

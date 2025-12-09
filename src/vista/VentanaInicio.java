@@ -2,6 +2,8 @@ package vista;
 
 import modelo.Musica;
 import controlador.ControlJuego;
+import vista.VentanaCargarPartida;
+import vista.VentanaGremio;
 
 import javax.swing.*;
 import java.awt.*;
@@ -38,7 +40,6 @@ public class VentanaInicio extends JFrame {
         panel.setLayout(null);
         add(panel);
 
-        // ================= TÍTULO =================
         JLabel titulo = new JLabel("DRAGON QUEST VIII", JLabel.CENTER);
         titulo.setFont(new Font("Serif", Font.BOLD, 60));
         titulo.setForeground(Color.WHITE);
@@ -51,24 +52,29 @@ public class VentanaInicio extends JFrame {
         subtitulo.setBounds(0, 140, getWidth(), 40);
         panel.add(subtitulo);
 
-        // ================= BOTONES =================
+        // ================== BOTONES ==================
 
         JLabel btnStart = crearBotonMenu("▶  Empezar aventura");
         btnStart.setBounds(50, 250, 400, 60);
         panel.add(btnStart);
 
-        // NUEVO BOTÓN: HISTORIAL
+        JLabel btnCargar = crearBotonMenu("📂  Cargar Partida");
+        btnCargar.setBounds(50, 300, 400, 60);
+        panel.add(btnCargar);
+
         JLabel btnHistorial = crearBotonMenu("📜  Historial de batallas");
-        btnHistorial.setBounds(50, 330, 400, 60);
+        btnHistorial.setBounds(50, 350, 400, 60);
         panel.add(btnHistorial);
 
+        JLabel btnGremio = crearBotonMenu("⚔️  Gremio de Aventureros");
+        btnGremio.setBounds(50, 400, 400, 60);
+        panel.add(btnGremio);
+
         JLabel btnSalir = crearBotonMenu("✖  Salir");
-        btnSalir.setBounds(50, 410, 400, 60);
+        btnSalir.setBounds(50, 450, 400, 60);
         panel.add(btnSalir);
 
-        // ====== ACCIONES ======
-
-        // Iniciar partida
+        // ========== ACCIONES ==========
         btnStart.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
@@ -79,14 +85,18 @@ public class VentanaInicio extends JFrame {
             }
         });
 
-        // Historial de Batallas
+        btnCargar.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                new VentanaCargarPartida(VentanaInicio.this).setVisible(true);
+            }
+        });
+
         btnHistorial.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
-
                 try {
                     String texto = Files.readString(Path.of("historial_batallas.txt"));
-
                     JTextArea area = new JTextArea(25, 45);
                     area.setEditable(false);
                     area.setFont(new Font("Monospaced", Font.PLAIN, 14));
@@ -112,7 +122,13 @@ public class VentanaInicio extends JFrame {
             }
         });
 
-        // Salir
+        btnGremio.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                new VentanaGremio().setVisible(true);
+            }
+        });
+
         btnSalir.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
@@ -120,9 +136,10 @@ public class VentanaInicio extends JFrame {
             }
         });
 
-        // Animaciones hover
         animacionHoverDeslizar(btnStart);
+        animacionHoverDeslizar(btnCargar);
         animacionHoverDeslizar(btnHistorial);
+        animacionHoverDeslizar(btnGremio);
         animacionHoverDeslizar(btnSalir);
 
         setVisible(true);
@@ -130,7 +147,6 @@ public class VentanaInicio extends JFrame {
         musica.reproducirLoop("/sonidos/intro.wav");
     }
 
-    // ====================== BOTÓN ESTILO RPG ======================
     private JLabel crearBotonMenu(String texto) {
         JLabel lbl = new JLabel(texto);
         lbl.setFont(new Font("Serif", Font.BOLD, 32));
@@ -140,7 +156,6 @@ public class VentanaInicio extends JFrame {
         return lbl;
     }
 
-    // ====================== HOVER DESLIZANTE ======================
     private void animacionHoverDeslizar(JLabel lbl) {
         lbl.addMouseListener(new java.awt.event.MouseAdapter() {
 
