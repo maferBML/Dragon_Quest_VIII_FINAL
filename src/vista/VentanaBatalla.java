@@ -14,6 +14,7 @@ import modelo.excepciones.ObjetivoInvalidoException;
 import modelo.excepciones.AccionNoPermitidaException;
 
 import modelo.HistorialBatallas;
+import utils.GuardarPartida;
 
 import javax.swing.*;
 import java.awt.*;
@@ -25,11 +26,10 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.ArrayDeque;
 
-
 public class VentanaBatalla extends JFrame {
 
+    private ArrayList<JPanel> hudHeroes = new ArrayList<>();
     private boolean batallaFinalizada = false;
-
 
     private enum ModoAccion { NINGUNO, ATACAR, HABILIDAD_ENEMIGO }
 
@@ -39,18 +39,16 @@ public class VentanaBatalla extends JFrame {
 
     private Image fondo;
     private JTextArea cuadroTexto;
-    private JPanel panelHeroes, panelEnemigos;
+    private JPanel panelEnemigos;
+    private JPanel panelSpritesHeroes;   // NUEVO
+
     private JPanel panelInferior;
     private JPanel panelMenuAcciones;
 
     private ArrayList<Heroe> heroes;
     private ArrayList<Enemigo> enemigos;
 
-    private ArrayList<JLabel> labelsHeroes = new ArrayList<>();
-    private ArrayList<JLabel> labelsImagenHeroes = new ArrayList<>();
-    private ArrayList<ImageIcon> iconosNormalesHeroes = new ArrayList<>();
-    private ArrayList<ImageIcon> iconosActivosHeroes = new ArrayList<>();
-
+    private ArrayList<JLabel> spritesHeroes = new ArrayList<>();
     private ArrayList<JPanel> panelesEnemigos = new ArrayList<>();
     private ArrayList<JLabel> labelsEnemigos = new ArrayList<>();
 
@@ -62,14 +60,18 @@ public class VentanaBatalla extends JFrame {
     private JButton btnDefender;
     private JButton btnHabilidad;
     private JButton btnSalir;
+    private JButton btnDeshacer;
+    private JButton btnRehacer;
 
     private Habilidad habilidadSeleccionada = null;
 
     private Musica musicaBatalla = new Musica();
 
-        // ======== DESHACER / REHACER ========
+    // turno de batalla (rondas), se va incrementando en turnoEnemigo()
+    private int turnoActual = 1;
 
-    // Datos básicos de cada personaje para poder restaurar el estado
+    // ================== CLASES AUXILIARES PARA UNDO/REDO ==================
+
     private static class DatosPersonaje {
         int vida, mp, ataque, defensa, velocidad;
         boolean vive, protegido;
@@ -77,35 +79,32 @@ public class VentanaBatalla extends JFrame {
         int estadoDuracion;
     }
 
-    // Estado completo de la batalla: héroes + enemigos + índice del héroe actual
     private static class EstadoBatalla {
         DatosPersonaje[] heroes;
         DatosPersonaje[] enemigos;
         int indiceHeroeActual;
     }
 
-    // Pilas para deshacer/rehacer (máximo 3 estados atrás)
     private Deque<EstadoBatalla> pilaUndo = new ArrayDeque<>();
     private Deque<EstadoBatalla> pilaRedo = new ArrayDeque<>();
 
-    // Botones extra del menú
-    private JButton btnDeshacer;
-    private JButton btnRehacer;
+    // ================== CONSTRUCTORES ==================
 
-
+    // Constructor normal (nueva partida)
     public VentanaBatalla(ControlJuego control) {
         this.control = control;
         this.heroes = control.getHeroes();
         this.enemigos = control.getEnemigos();
 
         setTitle("⚔️ Batalla en el Reino de Trodain");
-        setSize(900, 640);
+        setSize(1100, 750);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setResizable(false);
 
         fondo = new ImageIcon(getClass().getResource("/foticos/bosque.jpg")).getImage();
 
+        // Música únicamente de batalla
         musicaBatalla.reproducirLoop("/sonidos/batalla.wav");
 
         construirInterfaz();
@@ -115,14 +114,39 @@ public class VentanaBatalla extends JFrame {
             cuadroTexto.append("\nTurno inicial de: " + actual.getNombre() + "\n");
             resaltarHeroe(actual);
         }
-                // Guardamos el estado inicial por si el jugador quiere deshacer
+
         guardarEstadoActual();
         setVisible(true);
     }
 
-    // ===================== INTERFAZ =====================
+    // Constructor para partidas CARGADAS
+    public VentanaBatalla(ControlJuego control, int turnoInicial) {
+        // Construye toda la ventana normalmente
+        this(control);
+
+        // Sobrescribimos el turno con el que se guardó
+        this.turnoActual = turnoInicial;
+
+        // Aproximamos qué héroe sigue, usando el número de turno guardado
+        if (heroes != null && !heroes.isEmpty()) {
+            if (turnoInicial <= 0) {
+                this.indiceHeroeActual = 0;
+            } else {
+                this.indiceHeroeActual = turnoInicial % heroes.size();
+            }
+
+            Heroe actual = obtenerHeroeActual();
+            if (actual != null) {
+                resaltarHeroe(actual);
+                cuadroTexto.append("\n[Partida cargada] Turno de: " + actual.getNombre() + "\n");
+            }
+        }
+    }
+
+    // ================== INTERFAZ ==================
 
     private void construirInterfaz() {
+
         JPanel panelFondo = new JPanel(new BorderLayout()) {
             @Override
             protected void paintComponent(Graphics g) {
@@ -132,22 +156,81 @@ public class VentanaBatalla extends JFrame {
                 }
             }
         };
+
         panelFondo.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
-        panelHeroes = new JPanel(new GridLayout(1, heroes.size(), 15, 15));
-        panelHeroes.setOpaque(false);
-        panelHeroes.setBorder(BorderFactory.createEmptyBorder(30, 50, 10, 50));
-        for (Heroe h : heroes) {
-            agregarHeroe(h);
-        }
 
+        // ================= ENEMIGOS =================
         panelEnemigos = new JPanel(new GridLayout(1, enemigos.size(), 15, 15));
         panelEnemigos.setOpaque(false);
         panelEnemigos.setBorder(BorderFactory.createEmptyBorder(50, 50, 30, 50));
+
         for (Enemigo e : enemigos) {
             agregarEnemigo(e);
         }
 
+
+        // ================= HUD SUPERIOR =================
+        JPanel panelHUD = new JPanel(new GridLayout(1, heroes.size(), 20, 0));
+        panelHUD.setOpaque(false);
+        panelHUD.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+
+        hudHeroes.clear();
+
+        for (Heroe h : heroes) {
+            JPanel cuadro = new JPanel(new GridLayout(3, 1));
+            cuadro.setOpaque(true);
+            cuadro.setBackground(new Color(20, 20, 50));
+            cuadro.setBorder(BorderFactory.createLineBorder(Color.WHITE, 2));
+
+            JLabel lblNombre = new JLabel(h.getNombre(), JLabel.CENTER);
+            lblNombre.setForeground(Color.WHITE);
+            lblNombre.setFont(new Font("Serif", Font.BOLD, 16));
+
+            JLabel lblHP = new JLabel("HP: " + h.getVidaHp(), JLabel.CENTER);
+            lblHP.setForeground(Color.GREEN);
+            lblHP.setFont(new Font("Monospaced", Font.BOLD, 14));
+
+            JLabel lblMP = new JLabel("MP: " + h.getMagiaMp(), JLabel.CENTER);
+            lblMP.setForeground(Color.CYAN);
+            lblMP.setFont(new Font("Monospaced", Font.BOLD, 14));
+
+            cuadro.add(lblNombre);
+            cuadro.add(lblHP);
+            cuadro.add(lblMP);
+
+            hudHeroes.add(cuadro);
+            panelHUD.add(cuadro);
+        }
+
+        // ==== CONTENEDOR SUPERIOR (HUD + ENEMIGOS) ====
+        JPanel contenedorSuperior = new JPanel(new BorderLayout());
+        contenedorSuperior.setOpaque(false);
+
+        contenedorSuperior.add(panelHUD, BorderLayout.NORTH);
+        contenedorSuperior.add(panelEnemigos, BorderLayout.SOUTH);
+
+        panelFondo.add(contenedorSuperior, BorderLayout.NORTH);
+
+        // Agregar contenedor superior al fondo
+        panelFondo.add(contenedorSuperior, BorderLayout.NORTH);
+
+        // SPRITES DE HÉROES (ABAJO)
+        panelSpritesHeroes = new JPanel(new GridLayout(1, heroes.size(), 30, 30));
+        panelSpritesHeroes.setPreferredSize(new Dimension(900, 180)); // << nuevo
+        panelSpritesHeroes.setOpaque(false);
+        panelSpritesHeroes.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+        for (Heroe h : heroes) {
+            JLabel sprite = crearSpriteHeroe(h);
+            spritesHeroes.add(sprite);
+            panelSpritesHeroes.add(sprite);
+        }
+        if (!heroes.isEmpty()) {
+        resaltarHeroe(heroes.get(indiceHeroeActual));
+    }
+
+        // CUADRO DE TEXTO
         cuadroTexto = new JTextArea(8, 20);
         cuadroTexto.setEditable(false);
         cuadroTexto.setWrapStyleWord(true);
@@ -165,20 +248,24 @@ public class VentanaBatalla extends JFrame {
         panelTexto.setBackground(new Color(10, 10, 30));
         panelTexto.add(scrollTexto, BorderLayout.CENTER);
 
+        // MENÚ DE ACCIONES
         panelMenuAcciones = new JPanel();
         panelMenuAcciones.setBackground(new Color(10, 10, 30));
         panelMenuAcciones.setBorder(BorderFactory.createLineBorder(Color.WHITE, 2));
-        panelMenuAcciones.setLayout(new GridLayout(6, 1, 5, 5));
+        panelMenuAcciones.setLayout(new GridLayout(0, 1, 5, 5));
         panelMenuAcciones.setPreferredSize(new Dimension(230, 0));
 
-        btnAtacar   = crearBoton("Atacar");
-        btnDefender = crearBoton("Defender");
+        btnAtacar    = crearBoton("Atacar");
+        btnDefender  = crearBoton("Defender");
         btnHabilidad = crearBoton("Habilidad");
-        btnDeshacer = crearBoton("Deshacer");
-        btnRehacer  = crearBoton("Rehacer");
-        btnSalir    = crearBoton("Salir");
-        btnObjetos = crearBoton("Objetos");
+        btnDeshacer  = crearBoton("Deshacer");
+        btnRehacer   = crearBoton("Rehacer");
+        btnSalir     = crearBoton("Salir");
+        btnObjetos   = crearBoton("Objetos");
+
         panelMenuAcciones.add(btnObjetos);
+
+        // ====== LISTENERS BOTONES ======
 
         btnObjetos.addActionListener(e -> abrirInventario());
 
@@ -188,16 +275,12 @@ public class VentanaBatalla extends JFrame {
                 cuadroTexto.append("\nNo quedan héroes vivos.\n");
                 return;
             }
-
-            // 💤 Bloquea si está dormido
             if (!procesarEstado(h)) {
                 finTurnoJugador();
                 turnoEnemigo();
                 return;
             }
-
             modoActual = ModoAccion.ATACAR;
-
             habilidadSeleccionada = null;
             cuadroTexto.append("\n" + h.getNombre()
                     + " se prepara para atacar. Elige un enemigo.\n");
@@ -206,14 +289,11 @@ public class VentanaBatalla extends JFrame {
 
         btnDefender.addActionListener(e -> {
             Heroe h = obtenerHeroeActual();
-
-            // 💤 Si está dormido no puede defender
             if (!procesarEstado(h)) {
                 finTurnoJugador();
                 turnoEnemigo();
                 return;
             }
-
             if (h == null) {
                 cuadroTexto.append("\nNo quedan héroes vivos.\n");
                 return;
@@ -231,20 +311,34 @@ public class VentanaBatalla extends JFrame {
 
         btnHabilidad.addActionListener(e -> {
             Heroe h = obtenerHeroeActual();
-
-            // 💤 No puede usar habilidades dormido
             if (!procesarEstado(h)) {
                 finTurnoJugador();
                 turnoEnemigo();
                 return;
             }
-
             manejarHabilidad();
         });
 
         btnDeshacer.addActionListener(e -> deshacerRonda());
         btnRehacer.addActionListener(e -> rehacerRonda());
-        btnSalir.addActionListener(e -> System.exit(0));
+
+        // Botón SALIR: pregunta si guardar
+        btnSalir.addActionListener(e -> {
+            int op = JOptionPane.showConfirmDialog(
+                    this,
+                    "¿Quieres guardar antes de salir?",
+                    "Guardar y salir",
+                    JOptionPane.YES_NO_CANCEL_OPTION
+            );
+
+            if (op == JOptionPane.CANCEL_OPTION) return;
+
+            if (op == JOptionPane.YES_OPTION) {
+                guardarPartida();
+            }
+            musicaBatalla.parar();
+            System.exit(0);
+        });
 
         panelMenuAcciones.add(btnAtacar);
         panelMenuAcciones.add(btnDefender);
@@ -253,7 +347,6 @@ public class VentanaBatalla extends JFrame {
         panelMenuAcciones.add(btnRehacer);
         panelMenuAcciones.add(btnSalir);
 
-
         panelInferior = new JPanel(new BorderLayout());
         panelInferior.setBackground(new Color(10, 10, 30));
         panelInferior.setBorder(BorderFactory.createLineBorder(Color.WHITE, 2));
@@ -261,14 +354,12 @@ public class VentanaBatalla extends JFrame {
         panelInferior.add(panelTexto, BorderLayout.CENTER);
         panelInferior.add(panelMenuAcciones, BorderLayout.EAST);
 
-        panelFondo.add(panelHeroes, BorderLayout.NORTH);
-        panelFondo.add(panelEnemigos, BorderLayout.CENTER);
+        panelFondo.add(panelSpritesHeroes, BorderLayout.CENTER);
         panelFondo.add(panelInferior, BorderLayout.SOUTH);
+
 
         add(panelFondo);
     }
-
-    // ===================== AUXILIARES UI =====================
 
     private void mostrarMenuAcciones(boolean mostrar) {
         panelMenuAcciones.setVisible(mostrar);
@@ -323,62 +414,82 @@ public class VentanaBatalla extends JFrame {
         String archivo = null;
         if (nombre.equalsIgnoreCase("Goblin")) archivo = "/foticos/goblin.png";
         else if (nombre.equalsIgnoreCase("Slime")) archivo = "/foticos/slime.png";
-        else if (nombre.equalsIgnoreCase("Dragón") || nombre.equalsIgnoreCase("Dragon")) archivo = "/foticos/dragon.png";
+        else if (nombre.equalsIgnoreCase("Dragón") || nombre.equalsIgnoreCase("Dragon"))
+            archivo = "/foticos/dragon.png";
         else if (nombre.equalsIgnoreCase("Esqueleto")) archivo = "/foticos/esqueleto.png";
         return archivo == null ? null : new ImageIcon(getClass().getResource(archivo));
     }
 
-    // ===== HEROES =====
-    private void agregarHeroe(Heroe h) {
-        JPanel panelHeroe = new JPanel(new GridBagLayout());
-        panelHeroe.setOpaque(true);
-        panelHeroe.setBackground(new Color(20, 20, 50));
-        panelHeroe.setBorder(BorderFactory.createLineBorder(Color.WHITE, 2));
-        panelHeroe.setPreferredSize(new Dimension(280, 90));
-
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 5, 5, 5);
-
-        ImageIcon iconNormal = iconoHeroePorNombre(h.getNombre(), false);
-        ImageIcon iconActivo = iconoHeroePorNombre(h.getNombre(), true);
-
-        JLabel lblImg = new JLabel();
-        lblImg.setOpaque(false);
-        lblImg.setHorizontalAlignment(JLabel.LEFT);
-        if (iconNormal != null) {
-            lblImg.setIcon(iconNormal);
-        }
-
-        labelsImagenHeroes.add(lblImg);
-        iconosNormalesHeroes.add(iconNormal);
-        iconosActivosHeroes.add(iconActivo);
-
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.gridheight = 3;
-        gbc.anchor = GridBagConstraints.WEST;
-        panelHeroe.add(lblImg, gbc);
-
-        JLabel lblStats = new JLabel(
-                "<html><center><b>" + h.getNombre() + "</b><br>HP: "
-                        + h.getVidaHp() + "<br>MP: " + h.getMagiaMp() + "</center></html>"
-        );
-        lblStats.setForeground(Color.WHITE);
-        lblStats.setFont(new Font("Serif", Font.BOLD, 14));
-        labelsHeroes.add(lblStats);
-
-        gbc.gridx = 1;
-        gbc.gridy = 0;
-        gbc.gridheight = 3;
-        gbc.anchor = GridBagConstraints.EAST;
-        panelHeroe.add(lblStats, gbc);
-
-        panelHeroes.add(panelHeroe);
+    private JLabel crearSpriteHeroe(Heroe h) {
+    // ⚠️ Por si acaso viene null
+    if (h == null || h.getNombre() == null) {
+        System.out.println("⚠️ Heroe nulo o sin nombre, usando sprite por defecto.");
+        return crearSpriteHeroePorDefecto();
     }
 
-    // ===== ENEMIGOS: imagen + marco clicable =====
-    private void agregarEnemigo(Enemigo e) {
+    // Siempre arrancamos con una ruta por defecto (NUNCA null)
+    String ruta = "/foticos/hero_normal.png";
 
+    String nombre = h.getNombre().toLowerCase().trim();
+
+    if (nombre.contains("yangus")) {
+        ruta = "/foticos/yangus_normal.png";
+    } else if (nombre.contains("jessica")) {
+        ruta = "/foticos/jessica_normal.png";
+    } else if (nombre.contains("angelo")) {
+        ruta = "/foticos/angelo_normal.png";
+    } else if (nombre.contains("héroe") || nombre.contains("heroe") || nombre.contains("hero")) {
+        ruta = "/foticos/hero_normal.png";
+    } else {
+        System.out.println("⚠️ No se encontró sprite específico para: " + h.getNombre()
+                + ". Usando sprite por defecto.");
+        // ruta ya es hero_normal.png
+    }
+
+    // Buscamos el recurso de forma segura
+    URL url = getClass().getResource(ruta);
+    if (url == null) {
+        System.out.println("⚠️ No encontré la imagen en la ruta: " + ruta
+                + ". Usando sprite por defecto.");
+        return crearSpriteHeroePorDefecto();
+    }
+
+    ImageIcon icon = new ImageIcon(url);
+    Image esc = icon.getImage().getScaledInstance(130, 130, Image.SCALE_SMOOTH);
+
+    JLabel lbl = new JLabel(new ImageIcon(esc));
+    lbl.setOpaque(false);
+    lbl.setHorizontalAlignment(JLabel.CENTER);
+    lbl.setPreferredSize(new Dimension(150, 150));
+
+    return lbl;
+}
+
+// Helper para no repetir código
+    private JLabel crearSpriteHeroePorDefecto() {
+        URL url = getClass().getResource("/foticos/hero_normal.png");
+        if (url == null) {
+            // Último plan: un label vacío para que no explote nada
+            JLabel lbl = new JLabel("Héroe");
+            lbl.setOpaque(false);
+            lbl.setHorizontalAlignment(JLabel.CENTER);
+            lbl.setPreferredSize(new Dimension(150, 150));
+            return lbl;
+        }
+
+        ImageIcon icon = new ImageIcon(url);
+        Image esc = icon.getImage().getScaledInstance(130, 130, Image.SCALE_SMOOTH);
+
+        JLabel lbl = new JLabel(new ImageIcon(esc));
+        lbl.setOpaque(false);
+        lbl.setHorizontalAlignment(JLabel.CENTER);
+        lbl.setPreferredSize(new Dimension(150, 150));
+        return lbl;
+    }
+
+
+
+    private void agregarEnemigo(Enemigo e) {
         JPanel contenedor = new JPanel(new BorderLayout());
         contenedor.setOpaque(false);
 
@@ -388,7 +499,7 @@ public class VentanaBatalla extends JFrame {
 
         switch (e.getNombre().toLowerCase()) {
             case "slime":
-                w = 80;  h = 80;  offsetY = 70;
+                w = 80; h = 80; offsetY = 70;
                 break;
             case "goblin":
                 w = 120; h = 120; offsetY = 40;
@@ -419,13 +530,18 @@ public class VentanaBatalla extends JFrame {
         capa.add(lblImg, JLayeredPane.DEFAULT_LAYER);
 
         JLabel textoArriba = new JLabel(
-            "<html><center>HP: " + e.getVidaHp() + "</center></html>",
-            JLabel.CENTER
+                "<html><center>HP: " + e.getVidaHp() + "</center></html>",
+                JLabel.CENTER
         );
 
         textoArriba.setForeground(e.esMiniJefe() ? Color.ORANGE : Color.RED);
         textoArriba.setFont(new Font("Serif", Font.BOLD, 16));
-        textoArriba.setBounds(imgX - 10,160, w + 20, 40);
+
+        textoArriba.setOpaque(true);
+        textoArriba.setBackground(new Color(0, 0, 0, 120));
+        textoArriba.setBorder(BorderFactory.createLineBorder(Color.WHITE, 1));
+
+        textoArriba.setBounds(imgX - 10, 5, w + 20, 30);
 
         capa.add(textoArriba, JLayeredPane.PALETTE_LAYER);
 
@@ -435,11 +551,12 @@ public class VentanaBatalla extends JFrame {
                 e.esMiniJefe() ? Color.ORANGE : Color.RED, 3
         ));
         marco.setBounds(
-                imgX - 10,
-                offsetY - 10,
-                w + 25,
-                h + 15
+                imgX - 15,
+                offsetY - 5,
+                w + 30,
+                h + 20
         );
+
         capa.add(marco, JLayeredPane.PALETTE_LAYER);
 
         labelsEnemigos.add(textoArriba);
@@ -455,8 +572,6 @@ public class VentanaBatalla extends JFrame {
         contenedor.add(capa, BorderLayout.CENTER);
         panelEnemigos.add(contenedor);
     }
-
-    // ===================== TEXTO INICIAL JEFE =====================
 
     private String mensajeJefeInicial() {
         StringBuilder sb = new StringBuilder();
@@ -474,15 +589,13 @@ public class VentanaBatalla extends JFrame {
         return sb.toString();
     }
 
-    // ===================== LÓGICA DE TURNO =====================
+    // ================== LÓGICA DE TURNO ==================
 
     private Heroe obtenerHeroeActual() {
         int intentos = 0;
         while (intentos < heroes.size()) {
             Heroe h = heroes.get(indiceHeroeActual);
             if (h.estaVivo()) {
-                // 🛡️ Si venía defendiendo del turno anterior,
-                // aquí se le acaba la postura defensiva
                 if (h.isProtegido()) {
                     h.setProtegido(false);
                 }
@@ -493,24 +606,7 @@ public class VentanaBatalla extends JFrame {
         }
         return null;
     }
-
-
-    private void resaltarHeroe(Heroe actual) {
-        for (int i = 0; i < heroes.size(); i++) {
-            Heroe h = heroes.get(i);
-            JLabel lblStats = labelsHeroes.get(i);
-            JLabel lblImg = labelsImagenHeroes.get(i);
-
-            boolean esActual = (h == actual);
-            lblStats.setForeground(esActual ? Color.YELLOW : Color.WHITE);
-
-            ImageIcon icon = esActual ? iconosActivosHeroes.get(i) : iconosNormalesHeroes.get(i);
-            if (icon != null) lblImg.setIcon(icon);
-        }
-        panelHeroes.revalidate();
-        panelHeroes.repaint();
-    }
-
+    
     private Enemigo elegirEnemigoVivoAleatorio() {
         ArrayList<Enemigo> vivos = new ArrayList<>();
         for (Enemigo e : enemigos) if (e.estaVivo()) vivos.add(e);
@@ -530,25 +626,6 @@ public class VentanaBatalla extends JFrame {
         return false;
     }
 
-    private void actualizarHeroes() {
-        for (int i = 0; i < heroes.size(); i++) {
-            Heroe h = heroes.get(i);
-            JLabel lbl = labelsHeroes.get(i);
-            JLabel lblImg = labelsImagenHeroes.get(i);
-            if (!h.estaVivo()) {
-                lbl.setVisible(false);
-                lblImg.setVisible(false);
-            } else {
-                lbl.setVisible(true);
-                lblImg.setVisible(true);
-                lbl.setText("<html><center><b>" + h.getNombre() + "</b><br>HP: "
-                        + h.getVidaHp() + "<br>MP: " + h.getMagiaMp() + "</center></html>");
-            }
-        }
-        panelHeroes.revalidate();
-        panelHeroes.repaint();
-    }
-
     private void actualizarEnemigos() {
         for (int i = 0; i < enemigos.size(); i++) {
             Enemigo e = enemigos.get(i);
@@ -563,101 +640,83 @@ public class VentanaBatalla extends JFrame {
                 lbl.setVisible(true);
                 panelE.setVisible(true);
                 panelE.setEnabled(true);
-                lbl.setText(
-                    "<html><center>HP: " + e.getVidaHp() + "</center></html>"
-                );
+                lbl.setText("<html><center>HP: " + e.getVidaHp() + "</center></html>");
             }
         }
         panelEnemigos.revalidate();
         panelEnemigos.repaint();
     }
 
-        /**
-     * Aplica el efecto de veneno a un personaje (enemigo o héroe).
-     * Devuelve true si sigue vivo después del veneno, false si muere.
-     */
-        private boolean procesarVeneno(Personaje p) {
-            if (p == null) return true;
-            if (p.getEstado() == null) return true;
+    // ================== ESTADOS ESPECIALES (VENENO, CURA) ==================
 
-            if (!p.getEstado().getNombre().equalsIgnoreCase("Envenenado")) {
-                return true; // tiene otro estado, no veneno
-            }
+    private boolean procesarVeneno(Personaje p) {
+        if (p == null) return true;
+        if (p.getEstado() == null) return true;
 
-            // Daño aleatorio entre 5 y 12
-            int danio = 5 + random.nextInt(8);
-            p.setVidaHp(p.getVidaHp() - danio);
+        if (!p.getEstado().getNombre().equalsIgnoreCase("Envenenado")) return true;
 
-            cuadroTexto.append("☠️ " + p.getNombre()
-                    + " sufre " + danio + " de daño por veneno.\n");
+        int danio = 5 + random.nextInt(8);
+        p.setVidaHp(p.getVidaHp() - danio);
 
-            // Reducimos duración del estado
-            p.getEstado().reducirDuracion();
+        cuadroTexto.append("☠️ " + p.getNombre() +
+                " sufre " + danio + " de daño por veneno.\n");
 
-            // Si muere por el veneno
-            if (p.getVidaHp() <= 0) {
-                p.setVidaHp(0);
-                p.setVive(false);
-                cuadroTexto.append("💀 " + p.getNombre()
-                        + " ha muerto a causa del veneno.\n");
-            }
+        p.getEstado().reducirDuracion();
 
-            // Si el veneno se acaba
-            if (p.getEstado() != null && p.getEstado().terminado()) {
-                cuadroTexto.append("✨ El veneno en " + p.getNombre()
-                        + " se ha disipado.\n");
-                p.setEstado(null);
-            }
-
-            return p.estaVivo();
+        if (p.getVidaHp() <= 0) {
+            p.setVidaHp(0);
+            p.setVive(false);
+            cuadroTexto.append("💀 " + p.getNombre() +
+                    " ha muerto a causa del veneno.\n");
         }
 
-    /**
- * Aplica la curación regenerativa a un personaje.
- * Devuelve true si sigue vivo (siempre debería ser true porque cura),
- * y false si hubiera algún problema (nunca pasa).
- */
+        if (p.getEstado() != null && p.getEstado().terminado()) {
+            cuadroTexto.append("✨ El veneno en " + p.getNombre() +
+                    " se ha disipado.\n");
+            p.setEstado(null);
+        }
+
+        return p.estaVivo();
+    }
+
     private boolean procesarCuracion(Personaje p) {
         if (p == null) return true;
         if (p.getEstado() == null) return true;
 
-        if (!p.getEstado().getNombre().equalsIgnoreCase("CuracionRegenerativa")) {
-            return true; // Otro estado, no este
-        }
+        if (!p.getEstado().getNombre().equalsIgnoreCase("CuracionRegenerativa"))
+            return true;
 
-        // Curación entre 5 y 12
         int cura = 5 + random.nextInt(8);
         p.setVidaHp(p.getVidaHp() + cura);
 
-        cuadroTexto.append("✨ " + p.getNombre()
-                + " recupera " + cura + " puntos de vida por curación regenerativa.\n");
+        cuadroTexto.append("✨ " + p.getNombre() +
+                " recupera " + cura + " puntos de vida.\n");
 
-        // Reducir duración
         p.getEstado().reducirDuracion();
 
-        // Si se acabó
         if (p.getEstado().terminado()) {
-            cuadroTexto.append("💫 La curación regenerativa terminó para "
-                    + p.getNombre() + ".\n");
+            cuadroTexto.append("💫 La curación regenerativa terminó para " +
+                    p.getNombre() + ".\n");
             p.setEstado(null);
         }
 
         return true;
     }
 
-
-
     private void deshabilitarTodo() {
-        for (JPanel p : panelesEnemigos) {
-            p.setEnabled(false);
-        }
+        for (JPanel p : panelesEnemigos) p.setEnabled(false);
+
         btnAtacar.setEnabled(false);
         btnDefender.setEnabled(false);
         btnHabilidad.setEnabled(false);
         btnSalir.setEnabled(false);
+        btnObjetos.setEnabled(false);
+        btnDeshacer.setEnabled(false);
+        btnRehacer.setEnabled(false);
     }
 
-    // click en un enemigo (imagen/marco)
+    // ================== CLICK EN ENEMIGO ==================
+
     private void enemigoClicado(Enemigo enemigo, JPanel panelEnemigo) {
         if (!panelEnemigo.isEnabled()) return;
 
@@ -695,6 +754,7 @@ public class VentanaBatalla extends JFrame {
             mostrarMenuAcciones(true);
             return;
         }
+
         actualizarEnemigos();
 
         if (!objetivo.estaVivo()) {
@@ -709,13 +769,12 @@ public class VentanaBatalla extends JFrame {
             return;
         }
 
-
-
         finTurnoJugador();
         turnoEnemigo();
     }
 
-    // === HABILIDADES ===
+    // ================== HABILIDADES ==================
+
     private void manejarHabilidad() {
         Heroe h = obtenerHeroeActual();
         if (h == null) {
@@ -732,8 +791,8 @@ public class VentanaBatalla extends JFrame {
         String[] nombres = new String[habilidades.size()];
         for (int i = 0; i < habilidades.size(); i++) {
             Habilidad hab = habilidades.get(i);
-            nombres[i] = (i + 1) + ". " + hab.getNombre()
-                    + " (MP: " + hab.getCosteMp() + ")";
+            nombres[i] = (i + 1) + ". " + hab.getNombre() +
+                    " (MP: " + hab.getCosteMp() + ")";
         }
 
         String seleccion = (String) JOptionPane.showInputDialog(
@@ -771,8 +830,8 @@ public class VentanaBatalla extends JFrame {
             String[] nombresAliados = new String[vivos.size()];
             for (int i = 0; i < vivos.size(); i++) {
                 Heroe ha = vivos.get(i);
-                nombresAliados[i] = ha.getNombre()
-                        + " (HP: " + ha.getVidaHp() + ")";
+                nombresAliados[i] = ha.getNombre() +
+                        " (HP: " + ha.getVidaHp() + ")";
             }
 
             String selAliado = (String) JOptionPane.showInputDialog(
@@ -807,15 +866,16 @@ public class VentanaBatalla extends JFrame {
                 return;
             }
 
-            actualizarHeroes();
+            actualizarSpritesHeroes();
             finTurnoJugador();
             turnoEnemigo();
 
         } else {
             habilidadSeleccionada = hSel;
             modoActual = ModoAccion.HABILIDAD_ENEMIGO;
-            cuadroTexto.append("\n" + h.getNombre() + " prepara "
-                    + hSel.getNombre() + ". Elige un enemigo como objetivo.\n");
+            cuadroTexto.append("\n" + h.getNombre() +
+                    " prepara " + hSel.getNombre() +
+                    ". Elige un enemigo como objetivo.\n");
             mostrarMenuAcciones(false);
         }
     }
@@ -844,7 +904,8 @@ public class VentanaBatalla extends JFrame {
         actualizarEnemigos();
 
         if (!objetivo.estaVivo()) {
-            cuadroTexto.append("💥 " + objetivo.getNombre() + " ha sido derrotado.\n");
+            cuadroTexto.append("💥 " + objetivo.getNombre() +
+                    " ha sido derrotado.\n");
             panelEnemigo.setVisible(false);
         }
 
@@ -855,14 +916,15 @@ public class VentanaBatalla extends JFrame {
             return;
         }
 
-
-
-        actualizarHeroes();
+        actualizarSpritesHeroes();
         finTurnoJugador();
         turnoEnemigo();
     }
 
-        private void turnoEnemigo() {
+    // ================== TURNO DE ENEMIGO ==================
+
+    private void turnoEnemigo() {
+
         if (!hayVivos(heroes)) {
             cuadroTexto.append("\n💀 ¡TU EQUIPO HA SIDO DERROTADO!\n");
             musicaBatalla.parar();
@@ -870,22 +932,16 @@ public class VentanaBatalla extends JFrame {
             return;
         }
 
-
-
         Enemigo enemigoAtaca = elegirEnemigoVivoAleatorio();
         if (enemigoAtaca == null) return;
 
-        
-        // Primero aplicar veneno al enemigo antes de que actúe
         if (!procesarVeneno(enemigoAtaca)) {
             actualizarEnemigos();
-
             if (!hayVivos(enemigos)) {
                 cuadroTexto.append("\n🏆 ¡HAS GANADO LA BATALLA!\n");
                 musicaBatalla.parar();
                 finalizarBatalla("Victoria del jugador (veneno)");
             } else {
-                // Murió este enemigo pero quedan otros; vuelve el turno al jugador
                 mostrarMenuAcciones(true);
                 Heroe siguiente = obtenerHeroeActual();
                 if (siguiente != null) resaltarHeroe(siguiente);
@@ -893,17 +949,16 @@ public class VentanaBatalla extends JFrame {
             return;
         }
 
-
         Heroe heroeObjetivo = elegirHeroeVivoAleatorio();
         if (heroeObjetivo == null) return;
 
-        cuadroTexto.append("\n⚠️ Turno del enemigo: "
-                + enemigoAtaca.getNombre() + "\n");
+        cuadroTexto.append("\n⚠️ Turno del enemigo: " +
+                enemigoAtaca.getNombre() + "\n");
         cuadroTexto.append(enemigoAtaca.accionAutomaticaTexto(heroeObjetivo));
 
         if (!heroeObjetivo.estaVivo()) {
-            cuadroTexto.append("💀 " + heroeObjetivo.getNombre()
-                    + " ha sido derrotado.\n");
+            cuadroTexto.append("💀 " + heroeObjetivo.getNombre() +
+                    " ha sido derrotado.\n");
         }
 
         if (!hayVivos(heroes)) {
@@ -913,12 +968,11 @@ public class VentanaBatalla extends JFrame {
             return;
         }
 
-
-        actualizarHeroes();
+        actualizarSpritesHeroes();
         actualizarEnemigos();
 
         if (hayVivos(heroes) && hayVivos(enemigos)) {
-            // 🔹 Nueva ronda: guardamos el estado para poder deshacer
+            turnoActual++;
             guardarEstadoActual();
 
             mostrarMenuAcciones(true);
@@ -929,70 +983,47 @@ public class VentanaBatalla extends JFrame {
         cuadroTexto.setCaretPosition(cuadroTexto.getText().length());
     }
 
-
-    /**
- * Procesa efectos de estado para el héroe actual.
- * Devuelve true si puede actuar, false si pierde el turno.
- */
-        /**
-     * Procesa efectos de estado para el héroe actual.
-     * Devuelve true si puede actuar, false si pierde el turno o muere.
-     */
     private boolean procesarEstado(Heroe h) {
         if (h == null) return true;
 
-        // 1) Aplicar veneno al inicio de su turno (no le quita el turno,
-        //     pero puede matarlo)
         if (!procesarVeneno(h)) {
-            actualizarHeroes();
-
-            // Si TODO el equipo muere por veneno
+            actualizarSpritesHeroes();
             if (!hayVivos(heroes)) {
                 cuadroTexto.append("\n💀 ¡TU EQUIPO HA SIDO DERROTADO!\n");
                 deshabilitarTodo();
                 musicaBatalla.parar();
             }
-            return false; // este héroe ya no puede actuar
+            return false;
         }
-        // Curación regenerativa si aplica
+
         procesarCuracion(h);
 
-
-        // 2) Si ya no tiene estado, puede actuar normal
         if (h.getEstado() == null) return true;
 
         String nombre = h.getEstado().getNombre();
 
-        // ======== SUEÑO DETERMINISTA ========
         if (nombre.equalsIgnoreCase("Sueño")) {
             int turnosRestantes = h.getEstado().getDuracion();
-            cuadroTexto.append("\n😴 " + h.getNombre()
-                    + " está dormido (" + turnosRestantes
-                    + " turnos restantes).\n");
+            cuadroTexto.append("\n😴 " + h.getNombre() +
+                    " está dormido (" + turnosRestantes +
+                    " turnos restantes).\n");
 
-            // Pierde SIEMPRE este turno:
             h.getEstado().reducirDuracion();
 
-            // Si ya se consumieron todos los turnos, se despierta
-            // para el PRÓXIMO turno
             if (h.getEstado().terminado()) {
-                cuadroTexto.append("✨ " + h.getNombre()
-                        + " se despertará en su próximo turno.\n");
+                cuadroTexto.append("✨ " + h.getNombre() +
+                        " se despertará en su próximo turno.\n");
                 h.setEstado(null);
             }
 
-            return false; // turno perdido sí o sí
+            return false;
         }
 
-        // Otros estados futuros irían aquí
         return true;
     }
 
     private void finTurnoJugador() {
-    // 🔹 YA NO tocamos el protegido aquí
-    // (la defensa dura hasta el inicio del próximo turno de ese héroe)
-
-        actualizarHeroes();
+        actualizarSpritesHeroes();
 
         indiceHeroeActual = (indiceHeroeActual + 1) % heroes.size();
 
@@ -1002,9 +1033,8 @@ public class VentanaBatalla extends JFrame {
         cuadroTexto.setCaretPosition(cuadroTexto.getText().length());
     }
 
-    // ======== MANEJO DE ESTADOS (SNAPSHOTS) ========
+    // ================== UNDO / REDO ==================
 
-    // Toma un snapshot del estado actual de la batalla
     private EstadoBatalla tomarEstado() {
         EstadoBatalla est = new EstadoBatalla();
 
@@ -1012,19 +1042,19 @@ public class VentanaBatalla extends JFrame {
         for (int i = 0; i < heroes.size(); i++) {
             Heroe h = heroes.get(i);
             DatosPersonaje d = new DatosPersonaje();
-            d.vida     = h.getVidaHp();
-            d.mp       = h.getMagiaMp();
-            d.ataque   = h.getAtaque();
-            d.defensa  = h.getDefensa();
+            d.vida = h.getVidaHp();
+            d.mp = h.getMagiaMp();
+            d.ataque = h.getAtaque();
+            d.defensa = h.getDefensa();
             d.velocidad = h.getVelocidad();
-            d.vive     = h.estaVivo();
+            d.vive = h.estaVivo();
             d.protegido = h.isProtegido();
 
             if (h.getEstado() != null) {
-                d.estadoNombre   = h.getEstado().getNombre();
+                d.estadoNombre = h.getEstado().getNombre();
                 d.estadoDuracion = h.getEstado().getDuracion();
             } else {
-                d.estadoNombre   = null;
+                d.estadoNombre = null;
                 d.estadoDuracion = 0;
             }
             est.heroes[i] = d;
@@ -1034,19 +1064,19 @@ public class VentanaBatalla extends JFrame {
         for (int i = 0; i < enemigos.size(); i++) {
             Enemigo e = enemigos.get(i);
             DatosPersonaje d = new DatosPersonaje();
-            d.vida     = e.getVidaHp();
-            d.mp       = e.getMagiaMp();
-            d.ataque   = e.getAtaque();
-            d.defensa  = e.getDefensa();
+            d.vida = e.getVidaHp();
+            d.mp = e.getMagiaMp();
+            d.ataque = e.getAtaque();
+            d.defensa = e.getDefensa();
             d.velocidad = e.getVelocidad();
-            d.vive     = e.estaVivo();
+            d.vive = e.estaVivo();
             d.protegido = e.isProtegido();
 
             if (e.getEstado() != null) {
-                d.estadoNombre   = e.getEstado().getNombre();
+                d.estadoNombre = e.getEstado().getNombre();
                 d.estadoDuracion = e.getEstado().getDuracion();
             } else {
-                d.estadoNombre   = null;
+                d.estadoNombre = null;
                 d.estadoDuracion = 0;
             }
             est.enemigos[i] = d;
@@ -1057,9 +1087,8 @@ public class VentanaBatalla extends JFrame {
         return est;
     }
 
-    // Aplica un snapshot sobre el estado actual
     private void aplicarEstado(EstadoBatalla est) {
-        // Restaurar héroes
+
         for (int i = 0; i < heroes.size() && i < est.heroes.length; i++) {
             Heroe h = heroes.get(i);
             DatosPersonaje d = est.heroes[i];
@@ -1079,7 +1108,6 @@ public class VentanaBatalla extends JFrame {
             }
         }
 
-        // Restaurar enemigos
         for (int i = 0; i < enemigos.size() && i < est.enemigos.length; i++) {
             Enemigo e = enemigos.get(i);
             DatosPersonaje d = est.enemigos[i];
@@ -1101,7 +1129,7 @@ public class VentanaBatalla extends JFrame {
 
         this.indiceHeroeActual = est.indiceHeroeActual;
 
-        actualizarHeroes();
+        actualizarSpritesHeroes();
         actualizarEnemigos();
 
         Heroe actual = obtenerHeroeActual();
@@ -1111,21 +1139,15 @@ public class VentanaBatalla extends JFrame {
         cuadroTexto.setCaretPosition(cuadroTexto.getText().length());
     }
 
-    // Guarda el estado actual en la pila de undo
     private void guardarEstadoActual() {
         EstadoBatalla est = tomarEstado();
         pilaUndo.addFirst(est);
 
-        // Máximo 3 estados hacia atrás
-        if (pilaUndo.size() > 2) {
-            pilaUndo.removeLast();
-        }
+        if (pilaUndo.size() > 2) pilaUndo.removeLast();
 
-        // Al hacer una acción nueva, se borra el posible rehacer
         pilaRedo.clear();
     }
 
-    // === Botón DESHACER ===
     private void deshacerRonda() {
         if (pilaUndo.isEmpty()) {
             JOptionPane.showMessageDialog(this,
@@ -1135,16 +1157,13 @@ public class VentanaBatalla extends JFrame {
             return;
         }
 
-        // Guardar el estado actual en redo
         EstadoBatalla estadoActual = tomarEstado();
         pilaRedo.addFirst(estadoActual);
 
-        // Recuperar el último de undo
         EstadoBatalla est = pilaUndo.removeFirst();
         aplicarEstado(est);
     }
 
-    // === Botón REHACER ===
     private void rehacerRonda() {
         if (pilaRedo.isEmpty()) {
             JOptionPane.showMessageDialog(this,
@@ -1154,43 +1173,90 @@ public class VentanaBatalla extends JFrame {
             return;
         }
 
-        // Guardar el estado actual nuevamente en undo
         EstadoBatalla estadoActual = tomarEstado();
         pilaUndo.addFirst(estadoActual);
 
-        // Recuperar el primero de redo
         EstadoBatalla est = pilaRedo.removeFirst();
         aplicarEstado(est);
     }
 
+    // ================== GUARDAR PARTIDA ==================
 
-private void finalizarBatalla(String resultado) {
+    private void guardarPartida() {
+        String nombre = JOptionPane.showInputDialog(
+                this,
+                "Escribe un nombre para la partida:",
+                "Guardar partida",
+                JOptionPane.PLAIN_MESSAGE
+        );
 
-    if (batallaFinalizada) return; // ⛔ Ya se ejecutó antes
-    batallaFinalizada = true;     // 🔒 Bloquear siguientes llamadas
-
-    try {
-        HistorialBatallas.registrar(resultado, control.getHeroes(), control.getEnemigos());
-
-        if (resultado.toLowerCase().contains("derrota")) {
-            new VentanaDerrota();
-        } else {
-            new VentanaVictoria();
+        if (nombre == null) {
+            cuadroTexto.append("\nGuardado cancelado.\n");
+            return;
         }
 
-        control.reiniciarPartida();
-        dispose();
+        nombre = nombre.trim();
+        if (nombre.isEmpty()) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Debes escribir un nombre para la partida.",
+                    "Nombre inválido",
+                    JOptionPane.WARNING_MESSAGE
+            );
+            return;
+        }
 
-    } catch (Exception e) {
-        e.printStackTrace();
-        JOptionPane.showMessageDialog(this,
-                "Error al finalizar batalla:\n" + e.getMessage(),
-                "Error",
-                JOptionPane.ERROR_MESSAGE);
+        try {
+            GuardarPartida.guardar(control, turnoActual, nombre);
+            cuadroTexto.append("\n📜 Partida guardada como: " + nombre + "\n");
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(
+                    this,
+                    "No se pudo guardar la partida:\n" + ex.getMessage(),
+                    "Error al guardar",
+                    JOptionPane.ERROR_MESSAGE
+            );
+        }
     }
-}
+
+    // ================== FINALIZAR BATALLA ==================
+
+    private void finalizarBatalla(String resultado) {
+        if (batallaFinalizada) return;
+        batallaFinalizada = true;
+
+        try {
+            HistorialBatallas.registrar(resultado, control.getHeroes(), control.getEnemigos());
+
+            if (resultado.toLowerCase().contains("derrota")) {
+                new VentanaDerrota();
+            } else {
+                new VentanaVictoria();
+            }
+
+            control.reiniciarPartida();
+            musicaBatalla.parar();
+            dispose();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this,
+                    "Error al finalizar batalla:\n" + e.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    // ================== INVENTARIO ==================
+
     private void abrirInventario() {
         Heroe h = obtenerHeroeActual();
+        if (h == null) {
+            cuadroTexto.append("\nNo quedan héroes vivos.\n");
+            return;
+        }
+
         HashMap<String, Integer> inv = h.getInventario();
 
         if (inv.isEmpty()) {
@@ -1212,21 +1278,20 @@ private void finalizarBatalla(String resultado) {
 
         if (elegido == null) return;
 
-        // Elegir objetivo
         ArrayList<Heroe> vivos = new ArrayList<>();
         for (Heroe ally : heroes) if (ally.estaVivo()) vivos.add(ally);
 
         Heroe objetivo = vivos.get(0);
+
         boolean esEspecial = elegido.equalsIgnoreCase("talismán del valor")
-            || elegido.equalsIgnoreCase("hacha oxidada gigante")
-            || elegido.equalsIgnoreCase("amuleto de maná arcano")
-            || elegido.equalsIgnoreCase("bendición divina");
+                || elegido.equalsIgnoreCase("hacha oxidada gigante")
+                || elegido.equalsIgnoreCase("amuleto de maná arcano")
+                || elegido.equalsIgnoreCase("bendición divina");
 
         if (!esEspecial) {
-
-
             String[] nombres = vivos.stream()
-                    .map(a -> a.getNombre() + " (HP: " + a.getVidaHp() + ")")
+                    .map(a -> a.getNombre() +
+                            " (HP: " + a.getVidaHp() + ")")
                     .toArray(String[]::new);
 
             String sel = (String) JOptionPane.showInputDialog(
@@ -1239,6 +1304,8 @@ private void finalizarBatalla(String resultado) {
                     nombres[0]
             );
 
+            if (sel == null) return;
+
             for (int i = 0; i < nombres.length; i++) {
                 if (nombres[i].equals(sel)) {
                     objetivo = vivos.get(i);
@@ -1249,9 +1316,46 @@ private void finalizarBatalla(String resultado) {
         String resultado = h.usarItem(elegido, objetivo, heroes);
         cuadroTexto.append("\n" + resultado + "\n");
 
-        actualizarHeroes();
+        actualizarSpritesHeroes();
         finTurnoJugador();
         turnoEnemigo();
+    }
+
+    private void actualizarSpritesHeroes() {
+
+        // Actualizar HUD
+        if (hudHeroes != null && hudHeroes.size() == heroes.size()) {
+            for (int i = 0; i < heroes.size(); i++) {
+                Heroe h = heroes.get(i);
+                JPanel cuadro = hudHeroes.get(i);
+
+                JLabel lblHP = (JLabel) cuadro.getComponent(1);
+                JLabel lblMP = (JLabel) cuadro.getComponent(2);
+
+                lblHP.setText("HP: " + h.getVidaHp());
+                lblMP.setText("MP: " + h.getMagiaMp());
+            }
+        }
+
+        // Refrescar panel
+        panelSpritesHeroes.revalidate();
+        panelSpritesHeroes.repaint();
+    }
+
+
+    private void resaltarHeroe(Heroe actual) {
+        for (int i = 0; i < heroes.size(); i++) {
+            JLabel sprite = spritesHeroes.get(i);
+            Heroe h = heroes.get(i);
+
+            if (h == actual) {
+                sprite.setBorder(BorderFactory.createLineBorder(Color.YELLOW, 4));
+            } else {
+                sprite.setBorder(null);
+            }
+        }
+        panelSpritesHeroes.revalidate();
+        panelSpritesHeroes.repaint();
     }
 
 

@@ -1,7 +1,10 @@
 {
-    "java.project.sourcePaths": ["src"],
+    "java.project.sourcePaths": [
+        "src"
+    ],
     "java.project.outputPath": "bin",
     "java.project.referencedLibraries": [
-        "lib/**/*.jar"
+        "lib\\gson-2.10.1.jar",
+        "c:\\Users\\Oscar\\Desktop\\Chikorita\\Dragon_Quest_VIII_FINAL\\lib\\gson-2.10.1.jar"
     ]
 }

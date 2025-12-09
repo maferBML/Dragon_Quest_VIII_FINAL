@@ -14,7 +14,7 @@ public class VentanaDerrota extends JFrame {
     public VentanaDerrota() {
 
         setTitle("Derrota...");
-        setSize(900, 600);
+        setSize(1100, 750);
         setLocationRelativeTo(null);
         setResizable(false);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);

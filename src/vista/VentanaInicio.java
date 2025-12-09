@@ -12,13 +12,15 @@ public class VentanaInicio extends JFrame {
 
     private Image imagenFondo;
     private ControlJuego control;
-    private Musica musica = new Musica();
+
+    // Música del menú
+    private Musica musicaInicio = new Musica();
 
     public VentanaInicio(ControlJuego control) {
         this.control = control;
 
         setTitle("Reino de Trodain - Dragon Quest RPG");
-        setSize(900, 600);
+        setSize(1100, 750);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setResizable(false);
@@ -38,7 +40,6 @@ public class VentanaInicio extends JFrame {
         panel.setLayout(null);
         add(panel);
 
-        // ================= TÍTULO =================
         JLabel titulo = new JLabel("DRAGON QUEST VIII", JLabel.CENTER);
         titulo.setFont(new Font("Serif", Font.BOLD, 60));
         titulo.setForeground(Color.WHITE);
@@ -51,42 +52,60 @@ public class VentanaInicio extends JFrame {
         subtitulo.setBounds(0, 140, getWidth(), 40);
         panel.add(subtitulo);
 
-        // ================= BOTONES =================
+        // ================== BOTONES ==================
 
         JLabel btnStart = crearBotonMenu("▶  Empezar aventura");
         btnStart.setBounds(50, 250, 400, 60);
         panel.add(btnStart);
 
-        // NUEVO BOTÓN: HISTORIAL
+        JLabel btnCargar = crearBotonMenu("📂  Cargar Partida");
+        btnCargar.setBounds(50, 300, 400, 60);
+        panel.add(btnCargar);
+
         JLabel btnHistorial = crearBotonMenu("📜  Historial de batallas");
-        btnHistorial.setBounds(50, 330, 400, 60);
+        btnHistorial.setBounds(50, 350, 400, 60);
         panel.add(btnHistorial);
 
+        JLabel btnGremio = crearBotonMenu("⚔️  Gremio de Aventureros");
+        btnGremio.setBounds(50, 400, 400, 60);
+        panel.add(btnGremio);
+
         JLabel btnSalir = crearBotonMenu("✖  Salir");
-        btnSalir.setBounds(50, 410, 400, 60);
+        btnSalir.setBounds(50, 450, 400, 60);
         panel.add(btnSalir);
 
-        // ====== ACCIONES ======
+        // ====================================================
+        //                       ACCIONES
+        // ====================================================
 
-        // Iniciar partida
         btnStart.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
-                musica.parar();
+
+                // detener música solo al ir a batalla
+                musicaInicio.parar();
+
                 control.reiniciarPartida();
                 new VentanaBatalla(control);
                 dispose();
             }
         });
 
-        // Historial de Batallas
-        btnHistorial.addMouseListener(new java.awt.event.MouseAdapter() {
+        btnCargar.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
 
+                // ya NO detenemos música aquí
+                new VentanaCargarPartida(VentanaInicio.this);
+                setVisible(false);
+            }
+        });
+
+        btnHistorial.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
                 try {
                     String texto = Files.readString(Path.of("historial_batallas.txt"));
-
                     JTextArea area = new JTextArea(25, 45);
                     area.setEditable(false);
                     area.setFont(new Font("Monospaced", Font.PLAIN, 14));
@@ -112,25 +131,41 @@ public class VentanaInicio extends JFrame {
             }
         });
 
-        // Salir
+        btnGremio.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+
+                // ya NO detenemos música aquí
+                new VentanaGremio(VentanaInicio.this);
+                setVisible(false);
+            }
+        });
+
         btnSalir.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
+                musicaInicio.parar();
                 System.exit(0);
             }
         });
 
-        // Animaciones hover
+        // Animaciones
         animacionHoverDeslizar(btnStart);
+        animacionHoverDeslizar(btnCargar);
         animacionHoverDeslizar(btnHistorial);
+        animacionHoverDeslizar(btnGremio);
         animacionHoverDeslizar(btnSalir);
 
         setVisible(true);
 
-        musica.reproducirLoop("/sonidos/intro.wav");
+        // Música del menú
+        musicaInicio.reproducirLoop("/sonidos/intro.wav");
     }
 
-    // ====================== BOTÓN ESTILO RPG ======================
+    // ===============================================================
+    //                     MÉTODOS AUXILIARES
+    // ===============================================================
+
     private JLabel crearBotonMenu(String texto) {
         JLabel lbl = new JLabel(texto);
         lbl.setFont(new Font("Serif", Font.BOLD, 32));
@@ -140,7 +175,6 @@ public class VentanaInicio extends JFrame {
         return lbl;
     }
 
-    // ====================== HOVER DESLIZANTE ======================
     private void animacionHoverDeslizar(JLabel lbl) {
         lbl.addMouseListener(new java.awt.event.MouseAdapter() {
 
