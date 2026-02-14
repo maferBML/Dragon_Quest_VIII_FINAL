@@ -32,3 +32,20 @@ ENEMIGOS:
 - Esqueleto | HP: 0 | Estado: Muerto
 ==============================================
 
+==============================================
+FECHA: 2026-02-13T19:10:19.156889600
+RESULTADO: Derrota del jugador
+
+HÉROES:
+- Héroe | HP: 0 | Estado: Muerto
+- Yangus | HP: 0 | Estado: Muerto
+- Jessica | HP: 0 | Estado: Muerto
+- Angelo | HP: 0 | Estado: Muerto
+
+ENEMIGOS:
+- Goblin | HP: 34 | Estado: Vivo
+- Slime | HP: 110 | Estado: Vivo
+- Dragón | HP: 41 | Estado: Vivo
+- Esqueleto | HP: 0 | Estado: Muerto
+==============================================
+
